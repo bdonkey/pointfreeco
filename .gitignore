@@ -2,6 +2,10 @@
 #
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
 
+# ss 2018-06-12
+*.idea
+
+
 ## Build generated
 build/
 DerivedData/
