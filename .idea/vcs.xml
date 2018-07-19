@@ -2,5 +2,31 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Algebra.git-2604940474719102832" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/BlueCryptor.git-2709167748876642405" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Ccmark.git--4662329458419664766" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/CommonCrypto.git-1219305460334093717" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/DoctorPretty.git-6109252623258285196" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/FileCheck.git--7615645667378857685" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Operadics.git-5626071303828032414" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/SwiftCheck.git--4306398712468813520" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/SwiftCheck.git--4306398712468813520/Carthage/Checkouts/FileCheck" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Swiftx.git--6609395921371789242" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Swiftx.git--6609395921371789242/Carthage/Checkouts/FileCheck" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Swiftx.git--6609395921371789242/Carthage/Checkouts/Operadics" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Swiftx.git--6609395921371789242/Carthage/Checkouts/SwiftCheck" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/Swiftx.git--6609395921371789242/Carthage/Checkouts/SwiftCheck/Carthage/Checkouts/FileCheck" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/bits.git-9196587591774126515" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/core.git-9210800844849382486" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/cpostgresql.git-2801679829006959247" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/debugging.git-4365319567167379684" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/node.git-9175390252000121167" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/postgresql.git--2366079956334960021" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/swift-nio-zlib-support.git--1071467962839356487" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/swift-nio.git-3108475404973543938" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/swift-prelude.git-7589108985120732037" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/swift-snapshot-testing.git-5670048443326002038" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/swift-tagged.git--8574682101818595521" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.build/checkouts/swift-web.git-5049288896330722508" vcs="Git" />
   </component>
 </project>
