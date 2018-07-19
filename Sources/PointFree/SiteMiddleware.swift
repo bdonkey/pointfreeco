@@ -11,7 +11,7 @@ public let siteMiddleware: Middleware<StatusLineOpen, ResponseEnded, Prelude.Uni
   requestLogger { Current.logger.info($0) }
     <<< responseTimeout(25)
     <<< requireHerokuHttps(allowedInsecureHosts: allowedInsecureHosts)
-    <<< redirectUnrelatedHosts(isAllowedHost: isAllowed(host:), canonicalHost: canonicalHost)
+    <<< redirectUnrelatedHosts(isAllowedHost: { isAllowed(host: $0) }, canonicalHost: canonicalHost)
     <<< route(router: router, notFound: routeNotFoundMiddleware)
     <| currentUserMiddleware
     >=> currentSubscriptionMiddleware
@@ -69,7 +69,7 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
         |> reactivateMiddleware
 
     case let .account(.update(data)):
-      return conn.map(const(data .*. user .*. unit))
+      return conn.map(const(user .*. data .*. unit))
         |> updateProfileMiddleware
 
     case let .admin(.episodeCredits(.add(userId: userId, episodeSequence: episodeSequence))):
@@ -196,9 +196,9 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
       return conn.map(const(Either.right(episodeId.rawValue) .*. user .*. subscriberState .*. route .*. unit))
         |> useCreditResponse
 
-    case let .webhooks(.stripe(.invoice(event))):
+    case let .webhooks(.stripe(.event(event))):
       return conn.map(const(event))
-        |> stripeInvoiceWebhookMiddleware
+        |> stripeWebhookMiddleware
 
     case .webhooks(.stripe(.fallthrough)):
       return conn
