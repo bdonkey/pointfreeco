@@ -440,6 +440,8 @@ private func subscribeBlurb(for permission: EpisodePermission) -> StaticString {
   }
 }
 
+let useCreditCTA = "Use an episode credit"
+
 private let creditBlurb = View<(EpisodePermission, Episode)> { permission, episode -> [Node] in
   guard
     case let .loggedIn(user, .isNotSubscriber(.hasNotUsedCredit(true))) = permission,
@@ -470,12 +472,8 @@ private let creditBlurb = View<(EpisodePermission, Episode)> { permission, episo
         input(
           [
             type(.submit),
-            `class`(
-              [
-                Class.pf.components.button(color: .black, size: .small)
-              ]
-            ),
-            value("Use an episode credit")
+            `class`([Class.pf.components.button(color: .black, size: .small)]),
+            value(useCreditCTA)
           ]
         )
       ]
@@ -576,7 +574,7 @@ private func topLevelEpisodeMetadata(_ ep: Episode) -> String {
   let components: [String?] = [
     "#\(ep.sequence)",
     episodeDateFormatter.string(from: ep.publishedAt),
-    ep.subscriberOnly ? "Subscriber-only" : nil
+    ep.subscriberOnly ? "Subscriber-only" : "Free Episode"
   ]
 
   return components

@@ -42,12 +42,8 @@ private func fetchAccountData<I>(
   let ownerSubscription = Current.database.fetchSubscriptionByOwnerId(user.id)
     .mapExcept(requireSome)
 
-  let owner = userSubscription
-    .flatMap { subscription in
-      subscription.userId == user.id
-        ? pure(user)
-        : Current.database.fetchUserById(subscription.userId)
-    }
+  let owner = ownerSubscription
+    .flatMap(Current.database.fetchUserById <<< ^\.userId)
     .mapExcept(requireSome)
 
   let subscription = userSubscription <|> ownerSubscription
@@ -266,7 +262,7 @@ private let profileRowView = View<AccountData> { data -> Node in
           nameFields
             + emailFields
             + extraInvoiceInfoFields
-            + emailSettingCheckboxes.view(data.emailSettings)
+            + emailSettingCheckboxes.view((data.emailSettings, data.subscriberState))
             + submit
         )
         ])
@@ -274,10 +270,15 @@ private let profileRowView = View<AccountData> { data -> Node in
     ])
 }
 
-private let emailSettingCheckboxes = View<[Database.EmailSetting]> { currentEmailSettings in
-  [
-    p(["Receive email when:"]),
-    p([`class`([Class.padding([.mobile: [.left: 1]])])], Database.EmailSetting.Newsletter.allNewsletters.map { newsletter in
+private let emailSettingCheckboxes = View<([Database.EmailSetting], SubscriberState)> { currentEmailSettings, subscriberState -> [Node] in
+  let newsletters = subscriberState.isNonSubscriber
+    ? Database.EmailSetting.Newsletter.allNewsletters
+    : Database.EmailSetting.Newsletter.subscriberNewsletters
+
+  return [
+    // TODO: hide `welcomeEmails` for subscribers?
+    p(["Receive email for:"]),
+    p([`class`([Class.padding([.mobile: [.left: 1]])])], newsletters.map { newsletter in
       label([`class`([Class.display.block])], [
         input(
           [
@@ -301,6 +302,8 @@ private func newsletterDescription(_ type: Database.EmailSetting.Newsletter) -> 
     return "New blog posts on Point-Free Pointers (about every two weeks)"
   case .newEpisode:
     return "New episode is available (about once a week)"
+  case .welcomeEmails:
+    return "A short series of emails introducing Point-Free"
   }
 }
 
@@ -327,7 +330,7 @@ private let subscriptionOwnerOverview = View<AccountData> { data -> [Node] in
           gridColumn(
             sizes: [.mobile: 12],
             subscriptionPlanRows.view(subscription)
-              <> subscriptionTeamRow.view((data.currentUser, data.teammates))
+              <> subscriptionTeamRow.view(data)
               <> subscriptionInvitesRowView.view(data.teamInvites)
               <> subscriptionInviteMoreRowView.view((subscription, data.teamInvites, data.teammates))
               <> subscriptionPaymentInfoView.view(subscription)
@@ -419,59 +422,83 @@ public func nextBilling(for subscription: Stripe.Subscription) -> String {
   }
 }
 
-private let subscriptionPlanRows = View<Stripe.Subscription> { subscription in
-  return div([`class`([Class.padding([.mobile: [.top: 1, .bottom: 3]])])], [
-    gridRow([
-      gridColumn(sizes: [.mobile: 3], [
-        p([div(["Plan"])])
-        ]),
-      gridColumn(sizes: [.mobile: 9], [
-        gridRow([
-          gridColumn(sizes: [.mobile: 12, .desktop: 6], [
-            div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-              p([text(planName(for: subscription))])
-              ])
-            ]),
-          gridColumn(sizes: [.mobile: 12, .desktop: 6], [
-            div([`class`([Class.padding([.mobile: [.leftRight: 1]]), Class.grid.end(.desktop)])], [
-              p([mainAction(for: subscription)])
-              ])
-            ])
-          ])
-        ])
+private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> Node in
+
+  let planRow = gridRow([
+    gridColumn(sizes: [.mobile: 3], [
+      p([div(["Plan"])])
       ]),
-    gridRow([
-      gridColumn(sizes: [.mobile: 3], [
-        p([div(["Status"])])
-        ]),
-      gridColumn(sizes: [.mobile: 9], [
-        gridRow([
-          gridColumn(sizes: [.mobile: 12, .desktop: 6], [
-            div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-              p([text(status(for: subscription))])
-              ])
+    gridColumn(sizes: [.mobile: 9], [
+      gridRow([
+        gridColumn(sizes: [.mobile: 12, .desktop: 6], [
+          div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
+            p([text(planName(for: subscription))])
+            ])
+          ]),
+        gridColumn(sizes: [.mobile: 12, .desktop: 6], [
+          div([`class`([Class.padding([.mobile: [.leftRight: 1]]), Class.grid.end(.desktop)])], [
+            p([mainAction(for: subscription)])
             ])
           ])
         ])
       ])
-    ]
-    + (
-      subscription.cancelAtPeriodEnd || subscription.status == .canceled
-        ? []
-        : [
-          gridRow([
-            gridColumn(sizes: [.mobile: 3], [
-              p([div(["Next billing"])])
-              ]),
-            gridColumn(sizes: [.mobile: 9], [
-              div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-                p([text(nextBilling(for: subscription))])
-                ])
-              ])
+    ])
+
+  let statusRow = gridRow([
+    gridColumn(sizes: [.mobile: 3], [
+      p([div(["Status"])])
+      ]),
+    gridColumn(sizes: [.mobile: 9], [
+      gridRow([
+        gridColumn(sizes: [.mobile: 12, .desktop: 6], [
+          div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
+            p([text(status(for: subscription))])
             ])
-      ]
-    )
+          ])
+        ])
+      ])
+    ])
+
+  let nextBillingRow = subscription.cancelAtPeriodEnd || subscription.status == .canceled
+    ? nil
+    : gridRow([
+      gridColumn(sizes: [.mobile: 3], [
+        p([div(["Next billing"])])
+        ]),
+      gridColumn(sizes: [.mobile: 9], [
+        div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
+          p([text(nextBilling(for: subscription))])
+          ])
+        ])
+      ])
+
+  let discountRow = subscription.discount.map { discount in
+    gridRow([
+      gridColumn(sizes: [.mobile: 3], [
+        p([div(["Discount"])])
+        ]),
+      gridColumn(sizes: [.mobile: 9], [
+        div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
+          p([text(discountDescription(for: discount))])
+          ])
+        ])
+      ])
+  }
+
+  return div(
+    [`class`([Class.padding([.mobile: [.top: 1, .bottom: 3]])])],
+    [planRow, statusRow] + [nextBillingRow, discountRow].compactMap(id)
   )
+}
+
+private func discountDescription(for discount: Stripe.Subscription.Discount) -> String {
+  var result = "\(discount.coupon.name): "
+  if let percentOff = discount.coupon.percentOff {
+    result += "\(Int(percentOff))% off"
+  } else if let amountOff = discount.coupon.amountOff {
+    result += "$\(amountOff) off"
+  }
+  return result
 }
 
 private func mainAction(for subscription: Stripe.Subscription) -> Node {
@@ -504,8 +531,8 @@ private func mainAction(for subscription: Stripe.Subscription) -> Node {
   }
 }
 
-private let subscriptionTeamRow = View<(Database.User, [Database.User])> { currentUser, teammates -> [Node] in
-  guard !teammates.isEmpty else { return [] }
+private let subscriptionTeamRow = View<AccountData> { data -> [Node] in
+  guard !data.teammates.isEmpty && data.isTeamSubscription else { return [] }
 
   return [
     gridRow([`class`([subscriptionInfoRowClass])], [
@@ -517,7 +544,7 @@ private let subscriptionTeamRow = View<(Database.User, [Database.User])> { curre
       gridColumn(sizes: [.mobile: 9], [
         div([`class`([Class.padding([.mobile: [.leftRight: 1]])])],
             [p(["Your current team:"])]
-              <> teammates.flatMap { teammateRowView.view((currentUser, $0)) }
+              <> data.teammates.flatMap { teammateRowView.view((data.currentUser, $0)) }
         )
         ])
       ])
@@ -735,5 +762,10 @@ private struct AccountData {
 
   var isSubscriptionOwner: Bool {
     return self.currentUser.id == self.subscriptionOwner?.id
+  }
+
+  var isTeamSubscription: Bool {
+    guard let id = self.stripeSubscription?.plan.id else { return false }
+    return id == .teamMonthly || id == .teamYearly
   }
 }

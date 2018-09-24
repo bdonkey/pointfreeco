@@ -2,7 +2,7 @@ GET http://localhost:8080/pricing
 Cookie: pf_session={"userId":"00000000-0000-0000-0000-000000000000"}
 
 200 OK
-Content-Length: 91024
+Content-Length: 92296
 Content-Type: text/html; charset=utf-8
 Referrer-Policy: strict-origin-when-cross-origin
 X-Content-Type-Options: nosniff
@@ -1772,8 +1772,22 @@ as episodes are released.
                         <p class="fg-black fg-black normal h5 lh-4">
                           How many in your team?
                         </p>
-                        <input class="num-spinner center fg-black bold ts-d-r4 ts-m-r3 lh-2 fg-black" max="100" min="2" name="pricing[quantity]" onchange="javascript:var multiplier = this.valueAsNumber;
+                        <input class="num-spinner center fg-black bold ts-d-r4 ts-m-r3 lh-2 fg-black" max="100" min="2" name="pricing[quantity]" onblur="javascript:
+this.value = Math.min(Math.max(+this.value, +this.min), +this.max);
+var multiplier = +this.value;
 var elements = document.getElementsByClassName(&#39;team-price&#39;);
+for (var idx = 0; idx &lt; elements.length; idx++) {
+  var element = elements[idx];
+  element.textContent = (multiplier * element.dataset.price)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, &#39;,&#39;);
+}" oninput="javascript:
+var value = +this.value;
+var multiplier = Math.min(Math.max(value, 0), +this.max);
+var elements = document.getElementsByClassName(&#39;team-price&#39;);
+if (this.value != &quot;&quot; &amp;&amp; value != multiplier) {
+  this.value = multiplier;
+}
 for (var idx = 0; idx &lt; elements.length; idx++) {
   var element = elements[idx];
   element.textContent = (multiplier * element.dataset.price)
@@ -2628,6 +2642,7 @@ for (var idx = 0; idx &lt; elements.length; idx++) {
                             </div>
                           </div>
                           <input class="font-family-inherit fg-black border-box rounded border border-gray-800 h-3r m-pl1 m-pr1 m-pt1 m-pb1 m-mb2 w-100p block" name="vatNumber" placeholder="VAT Number (EU Customers Only)" type="text">
+                          <input class="font-family-inherit fg-black border-box rounded border border-gray-800 h-3r m-pl1 m-pr1 m-pt1 m-pb1 m-mb2 w-100p block" name="coupon" placeholder="Coupon Code" type="text">
                         </div>
                         <div class="font-family-inherit fg-black border-box rounded border border-gray-800 h-3r m-pl1 m-pr1 m-pt1 m-pb1 m-mb2 flex-column flex justify-center w-100p" data-stripe-key="pk_test" id="card-element">
                         </div>
@@ -2760,6 +2775,17 @@ of some of the things we’re excited to talk about
               Turning programming problems into algebraic problems
             </li>
           </ul>
+          <h4 class="fg-white fg-black bold ts-d-r1_5 ts-m-r1_25 lh-2 m-pt2">
+            Do you offer student discounts?
+          </h4>
+          <p class="fg-white">
+            We do! If you 
+            <a href="mailto:support@pointfree.co?subject=Student%20Discount" style="color:#4cccff;text-decoration:underline">
+              email us
+            </a>
+             proof of your student status (e.g. scan of ID card) we will give you a 50% discount off of the
+             individual plan.
+          </p>
           <h4 class="fg-white fg-black bold ts-d-r1_5 ts-m-r1_25 lh-2 m-pt2">
             Can I suggest a topic?
           </h4>
