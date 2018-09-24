@@ -243,6 +243,25 @@ private let suggestATopic = View<Prelude.Unit> { _ in
   ]
 }
 
+private let studentDiscounts = View<Prelude.Unit> { _ in
+  [
+    h4(
+      [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle4, Class.padding([.mobile: [.top: 2]])])],
+      [text("Do you offer student discounts?")]
+    ),
+
+    p(
+      [`class`([Class.pf.colors.fg.white])],
+      [
+        "We do! If you ",
+        a([mailto("support@pointfree.co?subject=Student%20Discount"), style(faqLinkStyles)], ["email us"]),
+        " proof of your student status (e.g. scan of ID card) we will give you a 50% discount off of the",
+        " individual plan."
+      ]
+    )
+  ]
+}
+
 private let whoAreYou = View<Prelude.Unit> { _ in
   [
     h4(
@@ -283,6 +302,7 @@ private let faqView = View<Prelude.Unit> { _ in
       div([`class`([whatToExpectBoxClass])],
           whatToExpect.view(unit)
             <> topicsView.view(unit)
+            <> studentDiscounts.view(unit)
             <> suggestATopic.view(unit)
             <> whoAreYou.view(unit)
       )
@@ -410,10 +430,31 @@ private let quantityRowView = View<Pricing> { pricing -> Node in
             max(Pricing.validTeamQuantities.upperBound),
             min(Pricing.validTeamQuantities.lowerBound),
             name("pricing[quantity]"),
-            onchange(
-              unsafeJavascript: """
-              var multiplier = this.valueAsNumber;
+            .init(
+              "onblur",
+              """
+              javascript:
+              this.value = Math.min(Math.max(+this.value, +this.min), +this.max);
+              var multiplier = +this.value;
               var elements = document.getElementsByClassName('team-price');
+              for (var idx = 0; idx < elements.length; idx++) {
+                var element = elements[idx];
+                element.textContent = (multiplier * element.dataset.price)
+                  .toString()
+                  .replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+              }
+              """
+            ),
+            .init(
+              "oninput",
+              """
+              javascript:
+              var value = +this.value;
+              var multiplier = Math.min(Math.max(value, 0), +this.max);
+              var elements = document.getElementsByClassName('team-price');
+              if (this.value != "" && value != multiplier) {
+                this.value = multiplier;
+              }
               for (var idx = 0; idx < elements.length; idx++) {
                 var element = elements[idx];
                 element.textContent = (multiplier * element.dataset.price)

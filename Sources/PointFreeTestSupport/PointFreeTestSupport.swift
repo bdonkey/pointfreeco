@@ -9,12 +9,12 @@ import Prelude
 extension Environment {
   public static let mock = Environment.init(
     assets: .mock,
-    blogPosts: { [.mock] },
+    blogPosts: unzurry([.mock]),
     cookieTransform: .plaintext,
     database: .mock,
-    date: { .mock },
+    date: unzurry(.mock),
     envVars: .mock,
-    episodes: { [.mock] },
+    episodes: unzurry(.mock),
     features: .allFeatures,
     gitHub: .mock,
     logger: .mock,
@@ -23,9 +23,17 @@ extension Environment {
   )
 
   public static let teamYearly = mock
-    |> (\Environment.database.fetchSubscriptionTeammatesByOwnerId) .~ const(pure([.mock]))
+    |> (\.database.fetchSubscriptionTeammatesByOwnerId) .~ const(pure([.mock]))
     |> \.database.fetchTeamInvites .~ const(pure([.mock]))
     |> \.stripe.fetchSubscription .~ const(pure(.teamYearly))
+
+  public static let individualMonthly = mock
+    |> (\.database.fetchSubscriptionTeammatesByOwnerId) .~ const(pure([.mock]))
+    |> \.stripe.fetchSubscription .~ const(pure(.individualMonthly))
+}
+
+extension Array where Element == Episode {
+  static let mock: [Element] = [.subscriberOnly, .free]
 }
 
 extension Assets {
@@ -56,11 +64,9 @@ extension Mailgun {
 
 extension Database {
   public static let mock = Database(
-    redeemEpisodeCredit: { _, _ in pure(unit) },
     addUserIdToSubscriptionId: { _, _ in pure(unit) },
     createSubscription: { _, _ in pure(unit) },
     deleteTeamInvite: const(pure(unit)),
-    insertTeamInvite: { _, _ in pure(.mock) },
     fetchAdmins: unzurry(pure([])),
     fetchEmailSettingsForUserId: const(pure([.mock])),
     fetchEpisodeCredits: const(pure([])),
@@ -73,12 +79,16 @@ extension Database {
     fetchUserByGitHub: const(pure(.mock)),
     fetchUserById: const(pure(.mock)),
     fetchUsersSubscribedToNewsletter: const(pure([.mock])),
+    fetchUsersToWelcome: const(pure([.mock])),
+    incrementEpisodeCredits: const(pure([])),
+    insertTeamInvite: { _, _ in pure(.mock) },
+    migrate: unzurry(pure(unit)),
+    redeemEpisodeCredit: { _, _ in pure(unit) },
     registerUser: { _, _ in pure(.some(.mock)) },
     removeTeammateUserIdFromSubscriptionId: { _, _ in pure(unit) },
     updateStripeSubscription: const(pure(.mock)),
     updateUser: { _, _, _, _, _ in pure(unit) },
-    upsertUser: { _, _ in pure(.some(.mock)) },
-    migrate: { pure(unit) }
+    upsertUser: { _, _ in pure(.some(.mock)) }
   )
 }
 
@@ -93,6 +103,10 @@ extension Database.User {
     name: "Blob",
     subscriptionId: .init(rawValue: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!)
   )
+
+  public static let newUser = mock
+    |> \.episodeCreditCount .~ 1
+    |> \.subscriptionId .~ nil
 
   public static let owner = mock
 
@@ -204,7 +218,7 @@ extension Stripe {
   public static let mock = Stripe(
     cancelSubscription: const(pure(.canceling)),
     createCustomer: { _, _, _ in pure(.mock) },
-    createSubscription: { _, _, _ in pure(.mock) },
+    createSubscription: { _, _, _, _ in pure(.mock) },
     fetchCustomer: const(pure(.mock)),
     fetchInvoice: const(pure(.mock(charge: .right(.mock)))),
     fetchInvoices: const(pure(.mock([.mock(charge: .right(.mock))]))),
@@ -279,6 +293,7 @@ extension Stripe.Invoice {
       closed: true,
       customer: "cus_test",
       date: .mock,
+      discount: nil,
       id: "in_test",
       lines: .mock([.mock]),
       number: "0000000-0000",
@@ -349,6 +364,7 @@ extension Stripe.Subscription {
     currentPeriodStart: .mock,
     currentPeriodEnd: Date(timeInterval: 60 * 60 * 24 * 30, since: .mock),
     customer: .right(.mock),
+    discount: nil,
     endedAt: nil,
     id: "sub_test",
     items: .mock([.mock]),
@@ -384,6 +400,20 @@ extension Stripe.Subscription {
     |> \.status .~ .canceled
 }
 
+extension Stripe.Subscription.Discount {
+  public static let mock = Stripe.Subscription.Discount(coupon: .mock)
+}
+
+extension Stripe.Subscription.Discount.Coupon {
+  public static let mock = Stripe.Subscription.Discount.Coupon(
+    amountOff: nil,
+    id: "coupon-deadbeef",
+    name: "Student Discount",
+    percentOff: 50,
+    valid: true
+  )
+}
+
 extension Stripe.Subscription.Item {
   public static let mock = Stripe.Subscription.Item(
     created: .mock,
@@ -395,12 +425,14 @@ extension Stripe.Subscription.Item {
 
 extension SubscribeData {
   public static let individualMonthly = SubscribeData(
+    coupon: nil,
     pricing: .init(billing: .monthly, quantity: 1),
     token: "stripe-deadbeef",
     vatNumber: ""
   )
 
   public static let individualYearly = SubscribeData(
+    coupon: nil,
     pricing: .init(billing: .yearly, quantity: 1),
     token: "stripe-deadbeef",
     vatNumber: ""
@@ -408,6 +440,7 @@ extension SubscribeData {
 
   public static func teamYearly(quantity: Int) -> SubscribeData {
     return .init(
+      coupon: nil,
       pricing: .init(billing: .yearly, quantity: quantity),
       token: "stripe-deadbeef",
       vatNumber: ""
@@ -422,8 +455,13 @@ extension Session {
     |> \.userId .~ Database.User.mock.id
 }
 
-public func request(to route: Route, session: Session = .loggedOut, basicAuth: Bool = false) -> URLRequest {
-  var request = router.request(for: route, base: URL(string: "http://localhost:8080"))!
+public func request(
+  with baseRequest: URLRequest,
+  session: Session = .loggedOut,
+  basicAuth: Bool = false
+  ) -> URLRequest {
+
+  var request = baseRequest
 
   // NB: This `httpBody` dance is necessary due to a strange Foundation bug in which the body gets cleared
   //     if you edit fields on the request.
@@ -449,4 +487,12 @@ public func request(to route: Route, session: Session = .loggedOut, basicAuth: B
     .merging(["Cookie": "pf_session=\(sessionCookie)"], uniquingKeysWith: { $1 })
 
   return request
+}
+
+public func request(to route: Route, session: Session = .loggedOut, basicAuth: Bool = false) -> URLRequest {
+  return request(
+    with: router.request(for: route, base: URL(string: "http://localhost:8080"))!,
+    session: session,
+    basicAuth: basicAuth
+  )
 }

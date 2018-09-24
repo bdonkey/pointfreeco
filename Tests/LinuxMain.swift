@@ -20,7 +20,8 @@ extension AccountTests {
     ("testAccountCancelingSubscription", testAccountCancelingSubscription),
     ("testAccountCanceledSubscription", testAccountCanceledSubscription),
     ("testEpisodeCredits_1Credit_NoneChosen", testEpisodeCredits_1Credit_NoneChosen),
-    ("testEpisodeCredits_1Credit_1Chosen", testEpisodeCredits_1Credit_1Chosen)
+    ("testEpisodeCredits_1Credit_1Chosen", testEpisodeCredits_1Credit_1Chosen),
+    ("testAccountWithDiscount", testAccountWithDiscount)
   ]
 }
 extension AppleDeveloperMerchantIdDomainAssociationTests {
@@ -183,7 +184,8 @@ extension InviteTests {
 extension InvoicesTests {
   static var allTests: [(String, (InvoicesTests) -> () throws -> Void)] = [
     ("testInvoices", testInvoices),
-    ("testInvoice", testInvoice)
+    ("testInvoice", testInvoice),
+    ("testInvoiceWithDiscount", testInvoiceWithDiscount)
   ]
 }
 extension MetaLayoutTests {
@@ -236,6 +238,7 @@ extension PricingTests {
   static var allTests: [(String, (PricingTests) -> () throws -> Void)] = [
     ("testPricing", testPricing),
     ("testPricingLoggedIn_NonSubscriber", testPricingLoggedIn_NonSubscriber),
+    ("testPricingLoggedIn_NonSubscriber_Expanded", testPricingLoggedIn_NonSubscriber_Expanded),
     ("testPricingLoggedIn_Subscriber", testPricingLoggedIn_Subscriber),
     ("testPricingLoggedIn_CanceledSubscriber", testPricingLoggedIn_CanceledSubscriber),
     ("testPricingLoggedIn_PastDueSubscriber", testPricingLoggedIn_PastDueSubscriber)
@@ -262,7 +265,9 @@ extension SiteMiddlewareTests {
 extension StripeTests {
   static var allTests: [(String, (StripeTests) -> () throws -> Void)] = [
     ("testDecodingCustomer", testDecodingCustomer),
-    ("testDecodingCustomer_Metadata", testDecodingCustomer_Metadata)
+    ("testDecodingCustomer_Metadata", testDecodingCustomer_Metadata),
+    ("testDecodingSubscriptionWithDiscount", testDecodingSubscriptionWithDiscount),
+    ("testDecodingDiscountJson", testDecodingDiscountJson)
   ]
 }
 extension StripeWebhooksTests {
@@ -284,6 +289,8 @@ extension StyleguideTests {
 extension SubscribeTests {
   static var allTests: [(String, (SubscribeTests) -> () throws -> Void)] = [
     ("testNotLoggedIn_IndividualMonthly", testNotLoggedIn_IndividualMonthly),
+    ("testCoupon_Individual", testCoupon_Individual),
+    ("testCoupon_Team", testCoupon_Team),
     ("testNotLoggedIn_IndividualYearly", testNotLoggedIn_IndividualYearly),
     ("testNotLoggedIn_Team", testNotLoggedIn_Team),
     ("testCurrentSubscribers", testCurrentSubscribers),
@@ -305,6 +312,15 @@ extension UpdateProfileTests {
     ("testUpdateNameAndEmail", testUpdateNameAndEmail),
     ("testUpdateEmailSettings", testUpdateEmailSettings),
     ("testUpdateExtraInvoiceInfo", testUpdateExtraInvoiceInfo)
+  ]
+}
+extension WelcomeEmailTests {
+  static var allTests: [(String, (WelcomeEmailTests) -> () throws -> Void)] = [
+    ("testWelcomeEmail1", testWelcomeEmail1),
+    ("testWelcomeEmail2", testWelcomeEmail2),
+    ("testWelcomeEmail3", testWelcomeEmail3),
+    ("testIncrementEpisodeCredits", testIncrementEpisodeCredits),
+    ("testEpisodeEmails", testEpisodeEmails)
   ]
 }
 
@@ -347,5 +363,6 @@ XCTMain([
   testCase(SubscribeTests.allTests),
   testCase(TeamEmailsTests.allTests),
   testCase(UpdateProfileTests.allTests),
+  testCase(WelcomeEmailTests.allTests),
 ])
 // swiftlint:enable trailing_comma
