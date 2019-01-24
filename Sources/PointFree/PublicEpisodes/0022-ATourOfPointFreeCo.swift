@@ -5,22 +5,26 @@ let ep22 = Episode(
 Join us for a tour of the code base that powers this very site and see what functional programming can look like in a production code base! We'll walk through cloning the repo and getting the site running on your local machine before showing off some of the fun functional programming we do on a daily basis.
 """,
   codeSampleDirectory: "0022-a-tour-of-point-free",
-  id: 22,
   exercises: exercises,
+  fullVideo: .init(
+    bytesLength: 784_408_755,
+    downloadUrl: "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/full-720p-DB0427B5-7387-45A1-8995-1C7B005AD28C.mp4",
+    streamingSource: "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/full/0022-tour-of-pointfreeco.m3u8"
+  ),
+  id: 22,
   image: "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/poster.jpg",
+  itunesImage: "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/itunes-poster.jpg",
   length: 39*60 + 21,
   permission: .free,
   publishedAt: Date(timeIntervalSince1970: 1531735023),
+  references: [.serverSideSwiftFromScratch, .pointfreeco],
   sequence: 22,
-  sourcesFull: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/tour-de-pointfree.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/tour-de-pointfree.webm"
-  ],
-  sourcesTrailer: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/trailer/hls-trailer.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/trailer/webm-trailer.webm",
-  ],
   title: "A Tour of Point-Free",
+  trailerVideo: .init(
+    bytesLength: 29_662_893,
+    downloadUrl: "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/trailer-720p.mp4",
+    streamingSource: "https://d1hf1soyumxcgv.cloudfront.net/0022-tour-of-pointfreeco/trailer/0022-trailer.m3u8"
+  ),
   transcriptBlocks: transcriptBlocks
 )
 
@@ -94,7 +98,7 @@ $ git clone https://github.com/pointfreeco/pointfreeco.git
 Cloning into 'pointfreeco'...
 """,
     timestamp: nil,
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -122,7 +126,7 @@ LICENSE               PointFree.xcodeproj   docker-compose.yml
 Makefile              PointFree.xcworkspace
 """,
     timestamp: nil,
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -162,7 +166,7 @@ $ make
   🔒 Please enter your password:
 """,
     timestamp: nil,
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -184,7 +188,7 @@ In order to run our playgrounds, we need them to be able to access to our depend
   ✅ Bootstrapped! Opening Xcode...
 """,
     timestamp: (3*60 + 20),
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -261,7 +265,7 @@ And it's running! If you check out the log output, you'll see some text output t
 Listening on 0.0.0.0:8080...
 """,
     timestamp: nil,
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -941,7 +945,7 @@ The thing that gets emitted for our first assertion is this file.
   <!DOCTYPE html>…
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1213,7 +1217,7 @@ $ make sourcery
   ✅ Generated!
 """,
     timestamp: nil,
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1239,7 +1243,7 @@ Changes not staged for commit:
 no changes added to commit (use "git add" and/or "git commit -a")
 """,
     timestamp: nil,
-    type: .code(lang: .other("sh"))
+    type: .code(lang: .shell)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1260,7 +1264,7 @@ We can see that something in `__Generated__/DerivedPartialIsos.swift` has change
 +      }
 """,
     timestamp: nil,
-    type: .code(lang: .other("diff"))
+    type: .code(lang: .diff)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1337,7 +1341,7 @@ It's running! When I hop back over to the browser and navigate to `/support`, I'
 Support Page
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """

@@ -1,7 +1,6 @@
-import Either
+import Css
 import Foundation
-import Optics
-import Prelude
+import Html
 
 public var Current = Environment()
 
@@ -17,5 +16,7 @@ public struct Environment {
   public private(set) var gitHub = GitHub.live
   public private(set) var logger = Logger()
   public private(set) var mailgun = Mailgun.live
+  public private(set) var renderHtml: ([Node]) -> String = Html.render
   public private(set) var stripe = Stripe.live
+  public private(set) var uuid: () -> UUID = UUID.init
 }

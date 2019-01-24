@@ -2,26 +2,28 @@ import Foundation
 
 let ep29 = Episode(
   blurb: """
-Templating languages are the most common way to render HTML in web frameworks, but we don't think they
-are the best way. We compare templating languages to the DSL we previously built, and show that
-the DSL fixes many problems that templates have, while also revealing amazing compositions that were
+Templating languages are the most common way to render HTML in web frameworks, but we don't think they \
+are the best way. We compare templating languages to the DSL we previously built, and show that \
+the DSL fixes many problems that templates have, while also revealing amazing compositions that were \
 previously hidden.
 """,
   codeSampleDirectory: "0029-dsls-vs-templating-languages",
-  id: 29,
   exercises: exercises,
+  fullVideo: .init(
+    bytesLength: 665_928_011,
+    downloadUrl: "https://d1hf1soyumxcgv.cloudfront.net/0029-dsl-vs-templating-languages/full-720p-DD72BEE3-57A5-46B1-95B7-E1BA62FE2CE8.mp4",
+    streamingSource: "https://d1hf1soyumxcgv.cloudfront.net/0029-dsl-vs-templating-languages/full/0029-dsl-vs-templating-languages.m3u8"
+  ),
+  id: 29,
   image: "https://d1hf1soyumxcgv.cloudfront.net/0029-dsl-vs-templating-languages/poster.jpg",
+  itunesImage: "https://d1hf1soyumxcgv.cloudfront.net/0029-dsl-vs-templating-languages/itunes-poster.jpg",
   length: 33*60 + 17,
   permission: .free,
   publishedAt: Date(timeIntervalSince1970: 1536559023),
+  references: [.openSourcingSwiftHtml],
   sequence: 29,
-  sourcesFull: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0029-dsl-vs-templating-languages/dsl-wins.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0029-dsl-vs-templating-languages/dsl-wins.webm",
-  ],
-  sourcesTrailer: [
-  ],
   title: "DSLs vs. Templating Languages",
+  trailerVideo: nil,
   transcriptBlocks: transcriptBlocks
 )
 

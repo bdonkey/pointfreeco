@@ -3,18 +3,18 @@ import Either
 import Foundation
 import Prelude
 
-public struct BlogPost {
+public struct BlogPost: Equatable {
   public typealias Id = Tagged<BlogPost, Int>
 
   public private(set) var author: Author?
   public private(set) var blurb: String
   public private(set) var contentBlocks: [Episode.TranscriptBlock]
-  public private(set) var coverImage: String
+  public private(set) var coverImage: String?
   public private(set) var id: Id
   public private(set) var publishedAt: Date
   public private(set) var title: String
 
-  public struct Video {
+  public struct Video: Equatable {
     public private(set) var sources: [String]
   }
 
@@ -22,14 +22,17 @@ public struct BlogPost {
     return "\(self.id)-\(PointFree.slug(for: self.title))"
   }
 
-  public enum Author {
+  public enum Author: Equatable {
     case brandon
+    case pointfree
     case stephen
 
     public var twitterUrl: String {
       switch self {
       case .brandon:
         return PointFree.twitterUrl(to: .mbrandonw)
+      case .pointfree:
+        return PointFree.twitterUrl(to: .pointfreeco)
       case .stephen:
         return PointFree.twitterUrl(to: .stephencelis)
       }

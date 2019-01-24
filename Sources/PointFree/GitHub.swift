@@ -14,9 +14,9 @@ public struct GitHub {
   public var fetchUser: (AccessToken) -> EitherIO<Error, User>
 
   static let live = GitHub(
-    fetchAuthToken: PointFree.fetchAuthToken,
-    fetchEmails: PointFree.fetchEmails,
-    fetchUser: PointFree.fetchUser
+    fetchAuthToken: PointFree.fetchAuthToken >>> runGitHub,
+    fetchEmails: PointFree.fetchEmails >>> runGitHub,
+    fetchUser: PointFree.fetchUser >>> runGitHub
   )
 
   public struct AccessToken: Codable {
@@ -62,11 +62,11 @@ public struct GitHub {
   }
 }
 
-private func fetchAuthToken(with code: String) -> EitherIO<Error, Either<GitHub.OAuthError, GitHub.AccessToken>> {
+func fetchAuthToken(with code: String) -> DecodableRequest<Either<GitHub.OAuthError, GitHub.AccessToken>> {
 
   var request = URLRequest(url: URL(string: "https://github.com/login/oauth/access_token")!)
   request.httpMethod = "POST"
-  request.httpBody = try? JSONEncoder().encode(
+  request.httpBody = try? gitHubJsonEncoder.encode(
     [
       "client_id": Current.envVars.gitHub.clientId,
       "client_secret": Current.envVars.gitHub.clientSecret,
@@ -78,29 +78,44 @@ private func fetchAuthToken(with code: String) -> EitherIO<Error, Either<GitHub.
     "Accept": "application/json"
   ]
 
-  return jsonDataTask(with: request, decoder: gitHubJsonDecoder)
+  return DecodableRequest(rawValue: request)
 }
 
-private func fetchEmails(token: GitHub.AccessToken) -> EitherIO<Error, [GitHub.User.Email]> {
+func fetchEmails(token: GitHub.AccessToken) -> DecodableRequest<[GitHub.User.Email]> {
 
   return apiDataTask("user/emails", token: token)
 }
 
-private func fetchUser(with token: GitHub.AccessToken) -> EitherIO<Error, GitHub.User> {
+func fetchUser(with token: GitHub.AccessToken) -> DecodableRequest<GitHub.User> {
 
   return apiDataTask("user", token: token)
 }
 
-private func apiDataTask<A: Decodable>(_ path: String, token: GitHub.AccessToken) -> EitherIO<Error, A> {
+private func apiDataTask<A>(_ path: String, token: GitHub.AccessToken) -> DecodableRequest<A> {
 
-  let request = URLRequest(url: URL(string: "https://api.github.com/" + path)!)
-    |> \.allHTTPHeaderFields .~ [
-      "Authorization": "token \(token.accessToken)",
-      "Accept": "application/vnd.github.v3+json"
-  ]
-
-  return jsonDataTask(with: request, decoder: gitHubJsonDecoder)
+  return DecodableRequest(
+    rawValue: URLRequest(url: URL(string: "https://api.github.com/" + path)!)
+      |> \.allHTTPHeaderFields .~ [
+        "Authorization": "token \(token.accessToken)",
+        "Accept": "application/vnd.github.v3+json"
+    ]
+  )
 }
+
+private func runGitHub<A>(_ gitHubRequest: DecodableRequest<A>) -> EitherIO<Error, A> {
+
+  return jsonDataTask(with: gitHubRequest.rawValue, decoder: gitHubJsonDecoder)
+}
+
+private let gitHubJsonEncoder: JSONEncoder = { () in
+  let encoder = JSONEncoder()
+
+  if #available(OSX 10.13, *) {
+    encoder.outputFormatting = [.sortedKeys]
+  }
+
+  return encoder
+}()
 
 private let gitHubJsonDecoder = JSONDecoder()
 //  |> \.keyDecodingStrategy .~ .convertFromSnakeCase

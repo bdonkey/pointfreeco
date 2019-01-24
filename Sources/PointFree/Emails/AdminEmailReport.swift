@@ -8,6 +8,7 @@ import HttpPipelineHtmlSupport
 import Optics
 import Prelude
 import Styleguide
+import View
 
 func adminEmailReport(_ type: String) -> View<([Database.User], Int)> {
   return simpleEmailLayout(adminEmailReportContent)
@@ -31,15 +32,15 @@ let adminEmailReportContent = View<(String, [Database.User], Int)> { type, error
           h3([`class`([Class.pf.type.responsiveTitle3])], ["New episode email report"]),
           p([
             "A total of ",
-            strong([text("\(totalAttempted)")]),
+            strong([.text("\(totalAttempted)")]),
             " emails were attempted to be sent, and of those, ",
-            strong([text("\(erroredUsers.count)")]),
+            strong([.text("\(erroredUsers.count)")]),
             " emails failed to send. Here is the list of users that we ",
             "had trouble sending to their emails:"
             ]),
 
           ul(erroredUsers.map { user in
-            li([text(user.name.map { "\($0) (\(user.email)" } ?? user.email.rawValue)])
+            li([.text(user.name.map { "\($0) (\(user.email)" } ?? user.email.rawValue)])
           })
           ])
         ])

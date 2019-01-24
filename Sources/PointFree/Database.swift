@@ -5,6 +5,7 @@ import PostgreSQL
 
 public struct Database {
   var addUserIdToSubscriptionId: (User.Id, Subscription.Id) -> EitherIO<Error, Prelude.Unit>
+  var createFeedRequestEvent: (FeedRequestEvent.FeedType, String, User.Id) -> EitherIO<Error, Prelude.Unit>
   var createSubscription: (Stripe.Subscription, User.Id) -> EitherIO<Error, Prelude.Unit>
   var deleteTeamInvite: (TeamInvite.Id) -> EitherIO<Error, Prelude.Unit>
   var fetchAdmins: () -> EitherIO<Error, [User]>
@@ -18,7 +19,7 @@ public struct Database {
   var fetchTeamInvites: (User.Id) -> EitherIO<Error, [TeamInvite]>
   var fetchUserByGitHub: (GitHub.User.Id) -> EitherIO<Error, User?>
   var fetchUserById: (User.Id) -> EitherIO<Error, User?>
-  var fetchUsersSubscribedToNewsletter: (EmailSetting.Newsletter) -> EitherIO<Error, [User]>
+  var fetchUsersSubscribedToNewsletter: (EmailSetting.Newsletter, Either<Prelude.Unit, Prelude.Unit>?) -> EitherIO<Error, [User]>
   var fetchUsersToWelcome: (Int) -> EitherIO<Error, [User]>
   var incrementEpisodeCredits: ([User.Id]) -> EitherIO<Error, [User]>
   var insertTeamInvite: (EmailAddress, User.Id) -> EitherIO<Error, TeamInvite>
@@ -32,6 +33,7 @@ public struct Database {
 
   static let live = Database(
     addUserIdToSubscriptionId: PointFree.add(userId:toSubscriptionId:),
+    createFeedRequestEvent: PointFree.createFeedRequestEvent(type:userAgent:userId:),
     createSubscription: PointFree.createSubscription,
     deleteTeamInvite: PointFree.deleteTeamInvite,
     fetchAdmins: PointFree.fetchAdmins,
@@ -45,7 +47,7 @@ public struct Database {
     fetchTeamInvites: PointFree.fetchTeamInvites,
     fetchUserByGitHub: PointFree.fetchUser(byGitHubUserId:),
     fetchUserById: PointFree.fetchUser(byUserId:),
-    fetchUsersSubscribedToNewsletter: PointFree.fetchUsersSubscribed(to:),
+    fetchUsersSubscribedToNewsletter: PointFree.fetchUsersSubscribed(to:nonsubscriberOrSubscriber:),
     fetchUsersToWelcome: PointFree.fetchUsersToWelcome(fromWeeksAgo:),
     incrementEpisodeCredits: PointFree.incrementEpisodeCredits(for:),
     insertTeamInvite: PointFree.insertTeamInvite,
@@ -67,7 +69,7 @@ public struct Database {
       case userId = "user_id"
     }
 
-    public enum Newsletter: String, RawRepresentable, Codable {
+    public enum Newsletter: String, RawRepresentable, Codable, Equatable {
       case announcements
       case newBlogPost
       case newEpisode
@@ -98,6 +100,28 @@ public struct Database {
     }
   }
 
+  public struct FeedRequestEvent: Decodable, Equatable {
+    public typealias Id = Tagged<FeedRequestEvent, UUID>
+
+    public private(set) var id: Id
+    public private(set) var type: FeedType
+    public private(set) var userAgent: String
+    public private(set) var userId: User.Id
+    public private(set) var updatedAt: Date
+
+    public enum CodingKeys: String, CodingKey {
+      case id
+      case type
+      case userAgent = "user_agent"
+      case userId = "user_id"
+      case updatedAt = "updated_at"
+    }
+
+    public enum FeedType: String, Decodable {
+      case privateEpisodesFeed
+    }
+  }
+
   public struct User: Decodable, Equatable {
     public internal(set) var email: EmailAddress
     public internal(set) var episodeCreditCount: Int
@@ -106,9 +130,11 @@ public struct Database {
     public internal(set) var id: Id
     public internal(set) var isAdmin: Bool
     public internal(set) var name: String?
+    public private(set) var rssSalt: RssSalt
     public private(set) var subscriptionId: Subscription.Id?
 
     public typealias Id = Tagged<User, UUID>
+    public typealias RssSalt = Tagged<(User, rssSalt: ()), UUID>
 
     public enum CodingKeys: String, CodingKey {
       case email
@@ -118,6 +144,7 @@ public struct Database {
       case id
       case isAdmin = "is_admin"
       case name
+      case rssSalt = "rss_salt"
       case subscriptionId = "subscription_id"
     }
 
@@ -159,6 +186,30 @@ public struct Database {
   }
 }
 
+private func createFeedRequestEvent(
+  type: Database.FeedRequestEvent.FeedType,
+  userAgent: String,
+  userId: Database.User.Id
+  ) -> EitherIO<Error, Prelude.Unit> {
+
+  return execute(
+    """
+    INSERT INTO "feed_request_events"
+    ("type", "user_agent", "user_id")
+    VALUES
+    ($1, $2, $3)
+    ON CONFLICT ("type", "user_agent", "user_id") DO UPDATE
+    SET "count" = "feed_request_events"."count" + 1
+    """,
+    [
+      type.rawValue,
+      userAgent,
+      userId.rawValue
+    ]
+    )
+    .map(const(unit))
+}
+
 private func createSubscription(
   with stripeSubscription: Stripe.Subscription, for userId: Database.User.Id
   )
@@ -179,7 +230,7 @@ private func createSubscription(
         execute(
           """
           UPDATE "users"
-          SET "subscription_id" = $1, "updated_at" = NOW()
+          SET "subscription_id" = $1
           WHERE "users"."id" = $2
           """,
           [
@@ -195,7 +246,7 @@ private func update(stripeSubscription: Stripe.Subscription) -> EitherIO<Error, 
   return firstRow(
     """
     UPDATE "subscriptions"
-    SET "stripe_subscription_status" = $1, "updated_at" = NOW()
+    SET "stripe_subscription_status" = $1
     WHERE "subscriptions"."stripe_subscription_id" = $2
     RETURNING "id", "stripe_subscription_id", "stripe_subscription_status", "user_id"
     """,
@@ -210,8 +261,7 @@ private func add(userId: Database.User.Id, toSubscriptionId subscriptionId: Data
   return execute(
     """
     UPDATE "users"
-    SET "subscription_id" = $1,
-        "updated_at" = NOW()
+    SET "subscription_id" = $1
     WHERE "users"."id" = $2
     """,
     [
@@ -230,8 +280,7 @@ private func remove(
   return execute(
     """
     UPDATE "users"
-    SET "subscription_id" = NULL,
-        "updated_at" = NOW()
+    SET "subscription_id" = NULL
     WHERE "users"."id" = $1
     AND "users"."subscription_id" = $2
     """,
@@ -279,7 +328,8 @@ private func fetchSubscriptionTeammates(ownerId: Database.User.Id) -> EitherIO<E
            "users"."id",
            "users"."is_admin",
            "users"."name",
-           "users"."subscription_id"
+           "users"."subscription_id",
+           "users"."rss_salt"
     FROM "users"
     INNER JOIN "subscriptions" ON "users"."subscription_id" = "subscriptions"."id"
     WHERE "subscriptions"."user_id" = $1
@@ -301,8 +351,7 @@ private func updateUser(
     UPDATE "users"
     SET "name" = COALESCE($1, "name"),
         "email" = COALESCE($2, "email"),
-        "episode_credit_count" = COALESCE($3, "episode_credit_count"),
-        "updated_at" = NOW()
+        "episode_credit_count" = COALESCE($3, "episode_credit_count")
     WHERE "id" = $4
     """,
     [
@@ -403,7 +452,8 @@ private func fetchUser(byUserId id: Database.User.Id) -> EitherIO<Error, Databas
            "id",
            "is_admin",
            "name",
-           "subscription_id"
+           "subscription_id",
+           "rss_salt"
     FROM "users"
     WHERE "id" = $1
     LIMIT 1
@@ -412,7 +462,16 @@ private func fetchUser(byUserId id: Database.User.Id) -> EitherIO<Error, Databas
   )
 }
 
-private func fetchUsersSubscribed(to newsletter: Database.EmailSetting.Newsletter) -> EitherIO<Error, [Database.User]> {
+private func fetchUsersSubscribed(to newsletter: Database.EmailSetting.Newsletter, nonsubscriberOrSubscriber: Either<Prelude.Unit, Prelude.Unit>?) -> EitherIO<Error, [Database.User]> {
+  let condition: String
+  switch nonsubscriberOrSubscriber {
+  case .none:
+    condition = ""
+  case .some(.left):
+    condition = " AND \"users\".\"subscription_id\" IS NULL"
+  case .some(.right):
+    condition = " AND \"users\".\"subscription_id\" IS NOT NULL"
+  }
   return rows(
     """
     SELECT "users"."email",
@@ -422,9 +481,10 @@ private func fetchUsersSubscribed(to newsletter: Database.EmailSetting.Newslette
            "users"."id",
            "users"."is_admin",
            "users"."name",
-           "users"."subscription_id"
+           "users"."subscription_id",
+           "users"."rss_salt"
     FROM "email_settings" LEFT JOIN "users" ON "email_settings"."user_id" = "users"."id"
-    WHERE "email_settings"."newsletter" = $1
+    WHERE "email_settings"."newsletter" = $1\(condition)
     """,
     [newsletter.rawValue]
   )
@@ -442,7 +502,8 @@ private func fetchUsersToWelcome(fromWeeksAgo weeksAgo: Int) -> EitherIO<Error, 
         "users"."id",
         "users"."is_admin",
         "users"."name",
-        "users"."subscription_id"
+        "users"."subscription_id",
+        "users"."rss_salt"
     FROM
         "email_settings"
         LEFT JOIN "users" ON "email_settings"."user_id" = "users"."id"
@@ -481,7 +542,8 @@ private func fetchUser(byGitHubUserId userId: GitHub.User.Id) -> EitherIO<Error,
            "id",
            "is_admin",
            "name",
-           "subscription_id"
+           "subscription_id",
+           "rss_salt"
     FROM "users"
     WHERE "github_user_id" = $1
     LIMIT 1
@@ -534,7 +596,8 @@ private func fetchAdmins() -> EitherIO<Error, [Database.User]> {
            "users"."id",
            "users"."is_admin",
            "users"."name",
-           "users"."subscription_id"
+           "users"."subscription_id",
+           "users"."rss_salt"
     FROM "users"
     WHERE "users"."is_admin" = TRUE
     """,
@@ -603,7 +666,8 @@ private func fetchFreeEpisodeUsers() -> EitherIO<Error, [Database.User]> {
            "users"."id",
            "users"."is_admin",
            "users"."name",
-           "users"."subscription_id"
+           "users"."subscription_id",
+           "users"."rss_salt"
     FROM "users"
     LEFT JOIN "subscriptions" ON "subscriptions"."id" = "users"."subscription_id"
     LEFT JOIN "email_settings" ON "email_settings"."user_id" = "users"."id"
@@ -741,6 +805,83 @@ private func migrate() -> EitherIO<Error, Prelude.Unit> {
       ALTER TABLE "episode_credits"
       ADD COLUMN IF NOT EXISTS
       "created_at" timestamp without time zone DEFAULT NOW() NOT NULL
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      ALTER TABLE "users"
+      ADD COLUMN IF NOT EXISTS
+      "rss_salt" uuid DEFAULT uuid_generate_v1mc() NOT NULL
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      CREATE TABLE IF NOT EXISTS "feed_request_events" (
+        "id" uuid DEFAULT uuid_generate_v1mc() PRIMARY KEY NOT NULL,
+        "type" character varying NOT NULL,
+        "user_agent" character varying NOT NULL,
+        "user_id" uuid REFERENCES "users" ("id"),
+        "count" integer NOT NULL DEFAULT 1,
+        "created_at" timestamp without time zone DEFAULT NOW() NOT NULL
+      )
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      CREATE UNIQUE INDEX IF NOT EXISTS "index_feed_request_events_on_type_user_agent_user_id"
+      ON "feed_request_events" ("type", "user_agent", "user_id")
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      ALTER TABLE "feed_request_events"
+      ADD COLUMN IF NOT EXISTS
+      "updated_at" timestamp without time zone DEFAULT NOW() NOT NULL
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      CREATE UNIQUE INDEX IF NOT EXISTS "index_email_settings_on_newsletter_user_id"
+      ON "email_settings" ("newsletter", "user_id")
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      CREATE OR REPLACE FUNCTION update_updated_at()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW."updated_at" = NOW();
+        RETURN NEW;
+      END;
+      $$ LANGUAGE PLPGSQL;
+      """
+    )))
+    .flatMap(const(execute(
+      """
+      DO $$
+      DECLARE
+        "table" text;
+      BEGIN
+        FOR "table" IN
+          SELECT "table_name" FROM "information_schema"."columns"
+          WHERE column_name = 'updated_at'
+        LOOP
+          IF NOT EXISTS (
+            SELECT 1 FROM "information_schema"."triggers"
+            WHERE "trigger_name" = 'update_updated_at_' || "table"
+          ) THEN
+            EXECUTE format(
+              '
+              CREATE TRIGGER "update_updated_at_%I"
+              BEFORE UPDATE ON "%I"
+              FOR EACH ROW EXECUTE PROCEDURE update_updated_at()
+              ',
+              "table", "table"
+            );
+          END IF;
+        END LOOP;
+      END;
+      $$ LANGUAGE PLPGSQL;
       """
     )))
     .map(const(unit))

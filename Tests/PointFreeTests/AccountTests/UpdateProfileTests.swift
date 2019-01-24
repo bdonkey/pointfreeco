@@ -1,7 +1,6 @@
 import Either
 import Html
-import HtmlTestSupport
-import HtmlPrettyPrint
+import HtmlSnapshotTesting
 import SnapshotTesting
 import Prelude
 import XCTest
@@ -20,6 +19,7 @@ class UpdateProfileTests: TestCase {
 
     assertSnapshot(
       matching: user,
+      as: .dump,
       named: "user_before_update"
     )
 
@@ -39,11 +39,12 @@ class UpdateProfileTests: TestCase {
         .run
         .perform()
         .right!!,
+      as: .dump,
       named: "user_after_update"
     )
 
     #if !os(Linux)
-      assertSnapshot(matching: output)
+    assertSnapshot(matching: output, as: .conn)
     #endif
   }
 
@@ -59,6 +60,7 @@ class UpdateProfileTests: TestCase {
 
     assertSnapshot(
       matching: emailSettings,
+      as: .dump,
       named: "email_settings_before_update"
     )
 
@@ -78,11 +80,12 @@ class UpdateProfileTests: TestCase {
         .run
         .perform()
         .right!,
+      as: .dump,
       named: "email_settings_after_update"
     )
 
     #if !os(Linux)
-      assertSnapshot(matching: output)
+    assertSnapshot(matching: output, as: .conn)
     #endif
   }
 
@@ -121,7 +124,7 @@ class UpdateProfileTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-    assertSnapshot(matching: output)
+    assertSnapshot(matching: output, as: .conn)
     #endif
 
     XCTAssertEqual("VAT: 123456789", updatedCustomerWithExtraInvoiceInfo)

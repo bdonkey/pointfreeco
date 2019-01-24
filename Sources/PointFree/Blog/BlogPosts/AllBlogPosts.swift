@@ -27,5 +27,12 @@ private let _allBlogPosts: [BlogPost] = [
   post0016_announcingSwiftHtml,
   post0017_typeSafeVapor,
   post0018_typeSafeKitura,
-  post0019_randomZalgoGenerator
+  post0019_randomZalgoGenerator,
+  post0020_PodcastRSS,
+  post0021_howToControlTheWorld,
+  post0022_someNewsAboutContramap,
+  post0023_openSourcingSnapshotTesting,
+  post0024_holidayDiscount,
+  post0025_2018YearInReview,
+  post0026_html020,
 ]

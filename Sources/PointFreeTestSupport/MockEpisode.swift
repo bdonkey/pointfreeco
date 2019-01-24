@@ -10,24 +10,49 @@ extension Episode {
   public static let subscriberOnly = subscriberOnlyEpisode
 }
 
+extension Episode.Reference {
+  public static let mock = Episode.Reference(
+    author: "Blob",
+    blurb: "Blob uses functional programming to impress all of their friends.",
+    link: "https://www.pointfree.co",
+    publishedAt: Date(timeIntervalSince1970: 1234567890),
+    title: "Functional Programming is Fun!"
+  )
+}
+
+extension Episode.Exercise {
+  public static let mock = Episode.Exercise(
+    body: "Show that every simply-connected, 3-dimensional manifold is homeomorphic to the 3-sphere."
+  )
+}
+
 private let subscriberOnlyEpisode = Episode(
   blurb: """
   This is a short blurb to give a high-level overview of what the episode is about. It can only be plain
   text, no markdown allowed. Here is some more text just to have some filler.
   """,
   codeSampleDirectory: "ep2-proof-in-functions",
-  id: 2,
   exercises: [
     .init(body: "This is an exercise.")
   ],
+  fullVideo: .init(
+    bytesLength: 500_000_000,
+    downloadUrl: "https://s3.amazonaws.com/pointfreeco/video.mp4",
+    streamingSource: "https://s3.amazonaws.com/pointfreeco/video.m3u8"
+  ),
+  id: 2,
   image: "",
+  itunesImage: "https://s3.amazonaws.com/itunes.jpg",
   length: 1380,
   permission: .subscriberOnly,
   publishedAt: Date(timeIntervalSince1970: 1_482_192_000),
   sequence: 2,
-  sourcesFull: [""],
-  sourcesTrailer: [""],
   title: "Proof in Functions",
+  trailerVideo: .init(
+    bytesLength: 5_000_000,
+    downloadUrl: "https://s3.amazonaws.com/pointfreeco/trailer.mp4",
+    streamingSource: "https://s3.amazonaws.com/pointfreeco/trailer.m3u8"
+  ),
   transcriptBlocks: [
     Episode.TranscriptBlock(
       content: "Introduction",
@@ -39,7 +64,17 @@ private let subscriberOnlyEpisode = Episode(
       This is a `paragraph` transcript block. It just contains some markdown text. A paragraph block can
       also have a timestamp associated with it, which is rendered at the beginning of the text. Clicking
       that timestamp jumps the video to that spot.
-
+     """,
+      timestamp: 0,
+      type: .paragraph
+    ),
+    Episode.TranscriptBlock(
+      content: "Title",
+      timestamp: 0,
+      type: .title
+    ),
+    Episode.TranscriptBlock(
+      content: """
       You can also break into new paragraphs in the markdown without creating a whole new paragraph block.
       However, you cannot associate a timestamp with this paragraph.
       """,
@@ -130,16 +165,25 @@ private let freeEpisode = Episode(
 As server-side Swift becomes more popular and widely adopted, it will be important to re-examine some of the past “best-practices” of web frameworks to see how Swift’s type system can improve upon them.
 """,
   codeSampleDirectory: "ep1-type-safe-html",
-  id: 1,
   exercises: [],
+  fullVideo: .init(
+    bytesLength: 500_000_000,
+    downloadUrl: "https://s3.amazonaws.com/pointfreeco/video.mp4",
+    streamingSource: "https://s3.amazonaws.com/pointfreeco/video.m3u8"
+  ),
+  id: 1,
   image: "",
+  itunesImage: "https://s3.amazonaws.com/itunes.jpg",
   length: 1380,
   permission: .free,
   publishedAt: Date(timeIntervalSince1970: 1_497_960_000),
   sequence: 1,
-  sourcesFull: [""],
-  sourcesTrailer: [],
   title: "Type-Safe HTML in Swift",
+  trailerVideo: .init(
+    bytesLength: 5_000_000,
+    downloadUrl: "https://s3.amazonaws.com/pointfreeco/trailer.mp4",
+    streamingSource: "https://s3.amazonaws.com/pointfreeco/trailer.m3u8"
+  ),
   transcriptBlocks: [
     Episode.TranscriptBlock(
       content: """

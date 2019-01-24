@@ -12,6 +12,7 @@ import Prelude
 import Styleguide
 import Tuple
 import UrlFormEncoding
+import View
 
 // todo: swift-prelude?
 // todo: rename to `tupleArray`?
@@ -48,10 +49,14 @@ public func requireSome<A>(
 
 // TODO: Move to PreludeFoundation?
 
+private let sessionConfig = URLSessionConfiguration.default
+  |> \.timeoutIntervalForRequest .~ 25
+  |> \.timeoutIntervalForResource .~ 25
+
 public func dataTask(with request: URLRequest) -> EitherIO<Error, (Data, URLResponse)> {
   return .init(
     run: .init { callback in
-      let session = URLSession(configuration: .default)
+      let session = URLSession(configuration: sessionConfig)
       session
         .dataTask(with: request) { data, response, error in
           defer { session.finishTasksAndInvalidate() }
@@ -70,6 +75,8 @@ public func dataTask(with request: URLRequest) -> EitherIO<Error, (Data, URLResp
 enum JSONError: Error {
   case error(String, Error)
 }
+
+public typealias DecodableRequest<A> = Tagged<A, URLRequest> where A: Decodable
 
 public func jsonDataTask<A>(with request: URLRequest, decoder: JSONDecoder? = nil)
   -> EitherIO<Error, A>
@@ -168,6 +175,20 @@ public func zip7<A, B, C, D, E, F, G>(
   return tuple7 <¢> a <*> b <*> c <*> d <*> e <*> f <*> g
 }
 
+public func zip8<A, B, C, D, E, F, G, H>(
+  _ a: Parallel<A>,
+  _ b: Parallel<B>,
+  _ c: Parallel<C>,
+  _ d: Parallel<D>,
+  _ e: Parallel<E>,
+  _ f: Parallel<F>,
+  _ g: Parallel<G>,
+  _ h: Parallel<H>
+  ) -> Parallel<(A, B, C, D, E, F, G, H)> {
+
+  return tuple8 <¢> a <*> b <*> c <*> d <*> e <*> f <*> g <*> h
+}
+
 public func tuple5<A, B, C, D, E>(_ a: A) -> (B) -> (C) -> (D) -> (E) -> (A, B, C, D, E) {
   return { b in { c in { d in { e in (a, b, c, d, e) } } } }
 }
@@ -178,6 +199,10 @@ public func tuple6<A, B, C, D, E, F>(_ a: A) -> (B) -> (C) -> (D) -> (E) -> (F) 
 
 public func tuple7<A, B, C, D, E, F, G>(_ a: A) -> (B) -> (C) -> (D) -> (E) -> (F) -> (G) -> (A, B, C, D, E, F, G) {
   return { b in { c in { d in { e in { f in { g in (a, b, c, d, e, f, g) } } } } } }
+}
+
+public func tuple8<A, B, C, D, E, F, G, H>(_ a: A) -> (B) -> (C) -> (D) -> (E) -> (F) -> (G) -> (H) -> (A, B, C, D, E, F, G, H) {
+  return { b in { c in { d in { e in { f in { g in { h in (a, b, c, d, e, f, g, h) } } } } } } }
 }
 
 public typealias T8<A, B, C, D, E, F, G, Z> = Tuple<A, T7<B, C, D, E, F, G, Z>>
@@ -275,6 +300,11 @@ public func sequence2<A, B, Z>(_ t: T3<A, IO<B>, Z>) -> IO<T3<A, B, Z>> {
 public func sequence3<A, B, C, Z>(_ t: T4<A, B, IO<C>, Z>) -> IO<T4<A, B, C, Z>> {
   return IO {
     return t |> over3(perform)
+  }
+}
+public func sequence4<A, B, C, D, Z>(_ t: T5<A, B, C, IO<D>, Z>) -> IO<T5<A, B, C, D, Z>> {
+  return IO {
+    return t |> over4(perform)
   }
 }
 
@@ -397,6 +427,10 @@ public func responseTimeout(_ interval: TimeInterval)
     }
 }
 
-public func oninput<T: HasOnchange>(unsafeJavascript: String) -> Attribute<T> {
-  return .init("oninput", "javascript:\(unsafeJavascript)")
+func text(_ string: String) -> Node {
+  return .text(string)
+}
+
+func playsinline(_ value: Bool) -> Attribute<Tag.Video> {
+  return .init("playslinline", value ? "" : nil)
 }

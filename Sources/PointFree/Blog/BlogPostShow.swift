@@ -7,6 +7,7 @@ import HttpPipeline
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let blogPostShowMiddleware: Middleware<StatusLineOpen, ResponseEnded, Tuple4<BlogPost, Database.User?, SubscriberState, Route?>, Data> =
   writeStatus(.ok)
@@ -21,7 +22,7 @@ let blogPostShowMiddleware: Middleware<StatusLineOpen, ResponseEnded, Tuple4<Blo
           data: (post, subscriberState),
           description: post.blurb,
           extraStyles: markdownBlockStyles,
-          image: post.coverImage,
+          image: post.coverImage ?? Current.assets.emailHeaderImgSrc,
           openGraphType: .website,
           style: .base(.mountains(.blog)),
           title: post.title,
@@ -115,7 +116,7 @@ let blogPostContentView = View<BlogPost> { post in
       [
         a(
           [href(url(to: .blog(.show(post))))],
-          [text(post.title)]
+          [.text(post.title)]
         )
       ]
     ),
@@ -126,7 +127,7 @@ let blogPostContentView = View<BlogPost> { post in
         style(flex(direction: .row))
       ],
       [
-        div([p([text(episodeDateFormatter.string(from: post.publishedAt))])]),
+        div([p([.text(episodeDateFormatter.string(from: post.publishedAt))])]),
         div(
           [`class`([Class.margin([.mobile: [.left: 1]])])],
           [twitterShareLink(text: post.title, url: url(to: .blog(.show(post))), via: "pointfreeco")]

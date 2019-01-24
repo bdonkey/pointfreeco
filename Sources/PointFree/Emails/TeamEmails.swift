@@ -3,6 +3,7 @@ import Html
 import HtmlCssSupport
 import Prelude
 import Styleguide
+import View
 
 let youHaveBeenRemovedEmailView = simpleEmailLayout(youHaveBeenRemovedEmailBody)
   .contramap { teamOwner, teammate in
@@ -23,7 +24,7 @@ private let youHaveBeenRemovedEmailBody = View<(Database.User, Database.User)> {
         div([`class`([Class.padding([.mobile: [.all: 2]])])], [
           h3([`class`([Class.pf.type.responsiveTitle3])], ["Team removal"]),
           p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
-            text("""
+            .text("""
               You have been removed from \(teamOwner.displayName)’s Point-Free team, which means you no longer
               have access to full episodes and transcripts. If you wish to subscribe to an individual plan,
               click the link below!
@@ -62,7 +63,7 @@ private let teammateRemovedEmailBody = View<(Database.User, Database.User)> { te
         div([`class`([Class.padding([.mobile: [.all: 2]])])], [
           h3([`class`([Class.pf.type.responsiveTitle3])], ["Team removal"]),
           p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
-            text("""
+            .text("""
               You have removed \(teammate.displayName) from your Point-Free team, which means they no longer
               have access to full episodes and transcripts. You can add them back anytime from your account
               settings.

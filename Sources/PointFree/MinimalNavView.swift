@@ -7,6 +7,7 @@ import HttpPipeline
 import Optics
 import Styleguide
 import Prelude
+import View
 
 let minimalNavView = View<(NavStyle.MinimalStyle, Database.User?, SubscriberState, Route?)> { style, currentUser, subscriberState, currentRoute in
   gridRow([`class`([newNavBarClass(for: style)])], [
@@ -15,7 +16,7 @@ let minimalNavView = View<(NavStyle.MinimalStyle, Database.User?, SubscriberStat
         a([href(path(to: .home))], [
           img(
             base64: pointFreeDiamondLogoSvgBase64(fill: fillColor(for: style)),
-            mediaType: .image(.svg),
+            type: .image(.svg),
             alt: "",
             [`class`([Class.hide(.desktop)])]
           )
@@ -29,7 +30,7 @@ let minimalNavView = View<(NavStyle.MinimalStyle, Database.User?, SubscriberStat
           a([href(path(to: .home))], [
             img(
               base64: pointFreeTextLogoSvgBase64(color: fillColor(for: style)),
-              mediaType: .image(.svg),
+              type: .image(.svg),
               alt: "",
               [`class`([Class.hide(.mobile)])]
             )

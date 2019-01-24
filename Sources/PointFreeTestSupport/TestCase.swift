@@ -4,10 +4,14 @@ import Prelude
 import SnapshotTesting
 import XCTest
 
-open class TestCase: XCTestCase {
+#if !os(Linux)
+public typealias SnapshotTestCase = XCTestCase
+#endif
+
+open class TestCase: SnapshotTestCase {
   override open func setUp() {
     super.setUp()
-
+    diffTool = "ksdiff"
 //    record = true
     Current = .mock
       |> \.database .~ .live

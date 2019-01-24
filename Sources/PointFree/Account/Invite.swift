@@ -9,6 +9,7 @@ import Optics
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let showInviteMiddleware =
   redirectCurrentSubscribers
@@ -163,7 +164,7 @@ private let showInviteLoggedOutView = View<(Database.TeamInvite, Database.User)>
 
         p([
           "Your colleague ",
-          a([mailto(inviter.email.rawValue)], [text(inviter.displayName)]),
+          a([mailto(inviter.email.rawValue)], [.text(inviter.displayName)]),
           """
            has invited you to join their team on Point-Free, a video series exploring functional programming
           concepts using the Swift programming language. Accepting this invitation gives you access to all of
@@ -191,7 +192,7 @@ private let showInviteLoggedInView = View<(Database.User, Database.TeamInvite, D
 
         p([
           "Your colleague ",
-          a([mailto(inviter.email.rawValue)], [text(inviter.displayName)]),
+          a([mailto(inviter.email.rawValue)], [.text(inviter.displayName)]),
           """
            has invited you to join their team account on Point-Free, a video series exploring functional
           programming concepts using the Swift programming language. Accepting this invitation gives you

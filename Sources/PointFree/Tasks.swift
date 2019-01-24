@@ -3,6 +3,7 @@ import Html
 import HtmlCssSupport
 import Prelude
 import Styleguide
+import View
 
 public func sendWelcomeEmails() -> EitherIO<Error, Prelude.Unit> {
   let zippedEmails = zip3(
@@ -161,6 +162,7 @@ func welcomeEmail2(_ user: Database.User) -> Email {
 
 let welcomeEmail2Content = View<Database.User> { user -> [Node] in
   let freeEpisodeLinks = Current.episodes()
+    .sorted(by: their(^\.sequence, >))
     .filter { !$0.subscriberOnly }
     .map {
       """

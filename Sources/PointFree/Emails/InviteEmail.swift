@@ -3,6 +3,7 @@ import Html
 import HtmlCssSupport
 import Prelude
 import Styleguide
+import View
 
 let teamInviteEmailView = simpleEmailLayout(teamInviteEmailBodyView)
   .contramap { inviter, invite in
@@ -24,7 +25,7 @@ private let teamInviteEmailBodyView = View<(Database.User, Database.TeamInvite)>
           h3([`class`([Class.pf.type.responsiveTitle3])], ["You’re invited!"]),
           p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
             "Your colleague ",
-            text(inviter.displayName),
+            .text(inviter.displayName),
             """
              has invited you to join their team account on Point-Free, a video series about functional
             programming and the Swift programming language. To accept, simply click the link below!
@@ -63,11 +64,11 @@ private let inviteeAcceptedEmailBodyView = View<(Database.User, Database.User)> 
           "Your invitation was accepted!"
           ]),
         p([
-          "Hey ", text(inviter.displayName), "!"
+          "Hey ", .text(inviter.displayName), "!"
           ]),
         p([
           "Your colleague ",
-          text(invitee.displayName),
+          .text(invitee.displayName),
           " has accepted your invitation! They now have full access to everything Point-Free has to offer. "
           ]),
 

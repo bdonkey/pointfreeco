@@ -1,6 +1,6 @@
 import Either
 import Html
-import HtmlPrettyPrint
+import HtmlPlainTextPrint
 import HttpPipeline
 @testable import PointFree
 import Optics
@@ -131,9 +131,8 @@ final class StripeWebhooksTests: TestCase {
     )
 
     let conn = connection(from: hook)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
     #endif
   }
 
@@ -146,9 +145,8 @@ final class StripeWebhooksTests: TestCase {
     )
 
     let conn = connection(from: hook)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
     #endif
   }
 
@@ -161,26 +159,25 @@ final class StripeWebhooksTests: TestCase {
     )
 
     let conn = connection(from: hook)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
     #endif
   }
 
   func testPastDueEmail() {
-    let doc = pastDueEmailView.view(unit).first!
+    let doc = pastDueEmailView.view(unit)
 
-    assertSnapshot(matching: render(doc, config: .pretty), pathExtension: "html")
-    assertSnapshot(matching: plainText(for: doc))
+    assertSnapshot(matching: doc, as: .html)
+    assertSnapshot(matching: plainText(for: doc), as: .lines)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
       let webView = WKWebView(frame: .init(x: 0, y: 0, width: 800, height: 800))
       webView.loadHTMLString(render(doc), baseURL: nil)
-      assertSnapshot(matching: webView)
+      assertSnapshot(matching: webView, as: .image)
 
       webView.frame.size = .init(width: 400, height: 700)
-      assertSnapshot(matching: webView)
+      assertSnapshot(matching: webView, as: .image)
     }
     #endif
   }

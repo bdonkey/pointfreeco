@@ -10,6 +10,7 @@ import Optics
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let episodeResponse =
   filterMap(
@@ -30,6 +31,7 @@ let episodeResponse =
           currentUser: currentUser,
           data: (permission, currentUser, subscriberState, episode),
           description: episode.blurb,
+          extraHead: videoJsHead,
           extraStyles: markdownBlockStyles <> pricingExtraStyles,
           image: episode.image,
           style: .base(navStyle),
@@ -159,18 +161,18 @@ private let episodeView = View<(EpisodePermission, Database.User?, SubscriberSta
   [
     gridRow([
       gridColumn(sizes: [.mobile: 12], [`class`([Class.hide(.desktop)])], [
-        div(episodeInfoView.view(episode))
+        div(episodeInfoView.view((permission, episode)))
         ])
       ]),
 
     gridRow([
       gridColumn(
-        sizes: [.mobile: 12, .desktop: 7],
+        sizes: [.mobile: 12, .desktop: 6],
         leftColumnView.view((permission, user, subscriberState, episode))
       ),
 
       gridColumn(
-        sizes: [.mobile: 12, .desktop: 5],
+        sizes: [.mobile: 12, .desktop: 6],
         [`class`([Class.pf.colors.bg.purple150, Class.grid.first(.mobile), Class.grid.last(.desktop)])],
         [
           div(
@@ -205,15 +207,11 @@ private let episodeView = View<(EpisodePermission, Database.User?, SubscriberSta
   ]
 }
 
-private let downloadsAndHosts =
-  downloadsView
-    <> hostsView.contramap(const(unit))
-
 private let rightColumnView = View<(Episode, Bool)> { episode, isEpisodeViewable in
 
   videoView.view((episode, isEpisodeViewable))
     <> episodeTocView.view((episode.transcriptBlocks, isEpisodeViewable))
-    <> downloadsAndHosts.view(episode.codeSampleDirectory)
+    <> downloadsView.view(episode.codeSampleDirectory)
 }
 
 private let videoView = View<(Episode, isEpisodeViewable: Bool)> { episode, isEpisodeViewable in
@@ -225,15 +223,26 @@ private let videoView = View<(Episode, isEpisodeViewable: Bool)> { episode, isEp
     [
       video(
         [
-          `class`([innerVideoContainerClass]),
+          id("episode-video"),
+          `class`([
+            innerVideoContainerClass,
+            videoJsClasses
+            ]),
+          style(position(.absolute)),
           controls(true),
           playsinline(true),
           autoplay(true),
-          poster(episode.image)
+          poster(episode.image),
+          data("setup", VideoJsOptions.default.jsonString)
         ],
-        isEpisodeViewable
-          ? episode.sourcesFull.map { source(src: $0) }
-          : episode.sourcesTrailer.map { source(src: $0) }
+        [
+          source(
+            src: isEpisodeViewable
+              ? episode.fullVideo.streamingSource
+              : episode.trailerVideo?.streamingSource ?? "",
+            [type(.application(.init(rawValue: "vnd.apple.mpegurl")))]
+          )
+        ]
       )
     ]
   )
@@ -254,14 +263,14 @@ private let episodeTocView = View<(blocks: [Episode.TranscriptBlock], isEpisodeV
   )
 }
 
-private func timestampLinkAttributes(timestamp: Int, useAnchors: Bool) -> [Attribute<Element.A>] {
+private func timestampLinkAttributes(timestamp: Int, useAnchors: Bool) -> [Attribute<Tag.A>] {
 
   return [
     useAnchors
       ? href("#t\(timestamp)")
       : href("#"),
 
-    onclick(unsafeJavascript: """
+    onclick(unsafe: """
       var video = document.getElementsByTagName("video")[0];
       video.currentTime = event.target.dataset.t;
       video.play();
@@ -285,7 +294,7 @@ private let tocChapterView = View<(title: String, timestamp: Int, isEpisodeViewa
     gridColumn(sizes: [.mobile: 2], [
       div(
         [`class`([Class.pf.colors.fg.purple, Class.type.align.end, Class.pf.opacity75])],
-        [text(timestampLabel(for: timestamp))]
+        [.text(timestampLabel(for: timestamp))]
       )
       ])
     ])
@@ -299,7 +308,7 @@ private let tocChapterLinkView = View<(title: String, timestamp: Int, active: Bo
           a(
             timestampLinkAttributes(timestamp: timestamp, useAnchors: true) +
               [`class`([Class.pf.colors.link.green, Class.type.textDecorationNone, Class.pf.type.body.regular])],
-            [text(title)]
+            [.text(title)]
           )
           ]),
 
@@ -307,7 +316,7 @@ private let tocChapterLinkView = View<(title: String, timestamp: Int, active: Bo
           a(
             timestampLinkAttributes(timestamp: timestamp, useAnchors: false) +
               [`class`([Class.pf.colors.link.green, Class.type.textDecorationNone, Class.pf.type.body.regular])],
-            [text(title)]
+            [.text(title)]
           )
           ]),
     ]
@@ -316,7 +325,7 @@ private let tocChapterLinkView = View<(title: String, timestamp: Int, active: Bo
   return [
     div(
       [`class`([Class.pf.colors.fg.green, Class.pf.type.body.regular])],
-      [text(title)]
+      [.text(title)]
     )
   ]
 }
@@ -325,7 +334,7 @@ private let downloadsView = View<String> { codeSampleDirectory -> [Node] in
   guard !codeSampleDirectory.isEmpty else { return [] }
 
   return [
-    div([`class`([Class.padding([.mobile: [.leftRight: 3], .desktop: [.leftRight: 4]])])],
+    div([`class`([Class.padding([.mobile: [.leftRight: 3], .desktop: [.leftRight: 4]]), Class.padding([.mobile: [.bottom: 3]])])],
         [
           h6(
             [`class`([Class.pf.type.responsiveTitle8, Class.pf.colors.fg.gray850, Class.padding([.mobile: [.bottom: 1]])])],
@@ -333,7 +342,7 @@ private let downloadsView = View<String> { codeSampleDirectory -> [Node] in
           ),
           img(
             base64: gitHubSvgBase64(fill: "#FFF080"),
-            mediaType: .image(.svg),
+            type: .image(.svg),
             alt: "",
             [`class`([Class.align.middle]), width(20), height(20)]
           ),
@@ -342,38 +351,11 @@ private let downloadsView = View<String> { codeSampleDirectory -> [Node] in
               href(gitHubUrl(to: GitHubRoute.episodeCodeSample(directory: codeSampleDirectory))),
               `class`([Class.pf.colors.link.yellow, Class.margin([.mobile: [.left: 1]]), Class.align.middle])
             ],
-            [text("\(codeSampleDirectory).playground")]
+            [.text("\(codeSampleDirectory).playground")]
           )
       ]
     )
   ]
-}
-
-private let hostsView = View<Prelude.Unit> { _ in
-  div([`class`([Class.padding([.mobile: [.leftRight: 3], .desktop: [.leftRight: 4]]), Class.padding([.mobile: [.topBottom: 3]])])],
-      [
-        h6(
-          [`class`([Class.pf.type.responsiveTitle8, Class.pf.colors.fg.gray850, Class.padding([.mobile: [.bottom: 1]])])],
-          ["Credits"]
-        ),
-        p(
-          [`class`([Class.pf.colors.fg.gray850])],
-          [
-            "Hosted by ",
-            a(
-              [`class`([Class.pf.colors.link.white]), mailto("brandon@pointfree.co")],
-              [.text(unsafeUnencodedString("Brandon&nbsp;Williams"))]
-            ),
-            " and ",
-            a(
-              [`class`([Class.pf.colors.link.white]), mailto("stephen@pointfree.co")],
-              [.text(unsafeUnencodedString("Stephen&nbsp;Celis"))]
-            ),
-            ". Recorded in Brooklyn, NY."
-          ]
-        )
-    ]
-  )
 }
 
 private func timestampLabel(for timestamp: Int) -> String {
@@ -386,20 +368,19 @@ private func timestampLabel(for timestamp: Int) -> String {
 
 private let leftColumnView = View<(EpisodePermission, Database.User?, SubscriberState, Episode)> {
   permission, user, subscriberState, episode -> Node in
-  div(
-    [div([`class`([Class.hide(.mobile)])], episodeInfoView.view(episode))]
+
+  let subscribeNodes = isSubscribeBannerVisible(for: permission)
+    ? subscribeView.view((permission, user, episode))
+    : []
+  let transcriptNodes = transcriptView.view((episode.transcriptBlocks, isEpisodeViewable(for: permission)))
+
+  return div(
+    [div([`class`([Class.hide(.mobile)])], episodeInfoView.view((permission, episode)))]
       + dividerView.view(unit)
-      + (
-        isSubscribeBannerVisible(for: permission)
-          ? subscribeView.view((permission, user, episode))
-          : []
-      )
-      + (
-        isEpisodeViewable(for: permission)
-          ? transcriptView.view(episode.transcriptBlocks)
-          : []
-      )
+      + subscribeNodes
+      + transcriptNodes
       + exercisesView.view(episode.exercises)
+      + referencesView.view(episode.references)
   )
 }
 
@@ -459,7 +440,7 @@ private let creditBlurb = View<(EpisodePermission, Episode)> { permission, episo
         )
       ],
       [
-        text("""
+        .text("""
           You currently have \(pluralizedEpisodeCredits(count: user.episodeCreditCount)) available. Do you
           want to use it to view this episode for free right now?
           """)
@@ -527,12 +508,12 @@ private let subscribeView = View<(EpisodePermission, Database.User?, Episode)> {
       [
         h3(
           [`class`([Class.pf.type.responsiveTitle4])],
-          [.text(unsafeUnencodedString("Subscribe to Point&#8209;Free"))]
+          [.raw("Subscribe to Point&#8209;Free")]
         ),
 
         p(
           [`class`([Class.pf.type.body.leading, Class.padding([.mobile: [.top: 2, .bottom: 3]])])],
-          [text(String(describing: subscribeBlurb(for: permission)))]
+          [.text(String(describing: subscribeBlurb(for: permission)))]
         ),
 
         a(
@@ -563,10 +544,11 @@ private let loginLink = View<(Database.User?, Episode)> { user, ep -> [Node] in
   ]
 }
 
-private let episodeInfoView = View<Episode> { ep in
+private let episodeInfoView = View<(EpisodePermission, Episode)> { permission, ep in
   div(
     [`class`([Class.padding([.mobile: [.all: 3], .desktop: [.all: 4]]), Class.pf.colors.bg.white])],
     topLevelEpisodeInfoView.view(ep)
+    + sectionsMenu(episode: ep, permission: permission)
   )
 }
 
@@ -586,22 +568,55 @@ let topLevelEpisodeInfoView = View<Episode> { ep in
   [
     strong(
       [`class`([Class.pf.type.responsiveTitle8])],
-      [text(topLevelEpisodeMetadata(ep))]
+      [.text(topLevelEpisodeMetadata(ep))]
     ),
     h1(
       [`class`([Class.pf.type.responsiveTitle4, Class.margin([.mobile: [.top: 2]])])],
-      [a([href(path(to: .episode(.left(ep.slug))))], [text(ep.title)])]
+      [a([href(path(to: .episode(.left(ep.slug))))], [.text(ep.title)])]
     ),
     div([`class`([Class.pf.type.body.leading])], [markdownBlock(ep.blurb)])
+    ]
+}
+
+private func sectionsMenu(episode: Episode, permission: EpisodePermission?) -> [Node] {
+  guard let permission = permission, isEpisodeViewable(for: permission) else { return [] }
+
+  let exercisesNode: Node? = episode.exercises.isEmpty
+    ? nil
+    : a([`class`([Class.pf.colors.link.purple, Class.margin([.mobile: [.right: 2]])]), href("#exercises")],
+        ["Exercises"])
+
+  let referencesNode: Node? = episode.references.isEmpty
+    ? nil
+    : a([`class`([Class.pf.colors.link.purple, Class.margin([.mobile: [.right: 2]])]), href("#references")],
+        ["References"])
+
+  // Don't show quick link menu if at least one of exercises or references are present.
+  guard exercisesNode != nil || referencesNode != nil else { return [] }
+
+  return [
+    div(
+      [`class`([Class.padding([.mobile: [.top: 2], .desktop: [.top: 3]])])],
+      [
+        a(
+          [`class`([Class.pf.colors.link.purple, Class.margin([.mobile: [.right: 2]])]), href("#transcript")],
+          ["Transcript"]
+        ),
+        exercisesNode,
+        referencesNode
+        ]
+        .compactMap(id)
+    )
   ]
 }
 
 let divider = hr([`class`([Class.pf.components.divider])])
 let dividerView = View<Prelude.Unit>(const(divider))
 
-private let transcriptView = View<[Episode.TranscriptBlock]> { blocks in
+private let transcriptView = View<([Episode.TranscriptBlock], Bool)> { blocks, isEpisodeViewable in
   div(
     [
+      id("transcript"),
       `class`(
         [
           Class.padding([.mobile: [.all: 3], .desktop: [.leftRight: 4, .bottom: 4, .top: 2]]),
@@ -609,8 +624,170 @@ private let transcriptView = View<[Episode.TranscriptBlock]> { blocks in
         ]
       )
     ],
-    blocks.flatMap(transcriptBlockView.view)
+    transcript(blocks: blocks, isEpisodeViewable: isEpisodeViewable)
   )
+}
+
+private func transcript(blocks: [Episode.TranscriptBlock], isEpisodeViewable: Bool) -> [Node] {
+  struct State { var nodes: [Node] = [], titleCount = 0 }
+
+  return blocks
+    .reduce(into: State()) { state, block in
+      if case .title = block.type { state.titleCount += 1 }
+      state.nodes += state.titleCount <= 1 || isEpisodeViewable
+        ? transcriptBlockView.view(block)
+        : []
+    }
+    .nodes + subscriberCalloutView(isEpisodeViewable: isEpisodeViewable)
+}
+
+private func subscriberCalloutView(isEpisodeViewable: Bool) -> [Node] {
+  guard !isEpisodeViewable else { return [] }
+
+  return [
+    gridRow([
+      gridColumn(
+        sizes: [.mobile: 12],
+        [style(margin(leftRight: .auto))],
+        [
+          div(
+            [
+              `class`(
+                [
+                  Class.margin([.mobile: [.top: 4]]),
+                  Class.padding([.mobile: [.all: 3]]),
+                  Class.pf.colors.bg.gray900
+                ]
+              )
+            ],
+            [
+              h4(
+                [
+                  `class`(
+                    [
+                      Class.pf.type.responsiveTitle4,
+                      Class.padding([.mobile: [.bottom: 2]])
+                    ]
+                  )
+                ],
+                ["Subscribe to Point-Free"]
+              ),
+              p(
+                [
+                  "👋 Hey there! Does this episode sound interesting? Well, then you may want to ",
+                  a(
+                    [
+                      href(path(to: .pricing(nil, expand: nil))),
+                      `class`([Class.pf.type.underlineLink])
+                    ],
+                    ["subscribe"]
+                  ),
+                  " so that you get access to this episodes and more!",
+                  ]
+              )
+            ]
+          )
+        ]
+      )
+      ])
+  ]
+}
+
+private let referencesView = View<[Episode.Reference]> { references -> [Node] in
+  guard !references.isEmpty else { return [] }
+
+  return dividerView.view(unit) + [
+    div(
+      [
+        `class`(
+          [
+            Class.padding([.mobile: [.all: 3], .desktop: [.leftRight: 4, .bottom: 4, .top: 2]]),
+            Class.pf.colors.bg.white
+          ]
+        )
+      ],
+      [
+        h2(
+          [
+            id("references"),
+            `class`([Class.h4, Class.type.lineHeight(3), Class.padding([.mobile: [.top: 2]])])
+          ],
+          ["References"]
+        ),
+        ul(
+          zip(1..., references).map { idx, reference in
+            li(
+              [
+                id("reference-\(idx)"),
+                `class`([Class.margin([.mobile: [.bottom: 3]])])
+              ],
+              [
+                h4(
+                  [`class`([
+                    Class.pf.type.responsiveTitle5,
+                    Class.margin([.mobile: [.bottom: 0]])
+                    ])],
+                  [
+                    a(
+                      [
+                        href(reference.link),
+                        target(.blank),
+                        rel(.init(rawValue: "noopener noreferrer"))
+                      ],
+                      [.text(reference.title)]
+                    )
+                  ]
+                ),
+                strong(
+                  [`class`([Class.pf.type.body.small])],
+                  [.text(topLevelReferenceMetadata(reference))]
+                ),
+                div([markdownBlock(reference.blurb ?? "")]),
+                div(
+                  [
+                    a(
+                      [
+                        href(reference.link),
+                        `class`([Class.pf.colors.link.purple]),
+                        target(.blank),
+                        rel(.init(rawValue: "noopener noreferrer"))
+                      ],
+                      [
+                        img(
+                          base64: newWindowSvgBase64(fill: "#974DFF"),
+                          type: .image(.svg),
+                          alt: "",
+                          [
+                            `class`([
+                              Class.align.middle,
+                              Class.margin([.mobile: [.right: 1]])
+                              ]),
+                            width(14),
+                            height(14),
+                            style(margin(top: .px(-2)))
+                          ]
+                        ),
+                        .text(reference.link)
+                      ]
+                    )
+                  ]
+                )
+              ]
+            )
+          }
+        )
+      ]
+    )
+  ]
+}
+
+private func topLevelReferenceMetadata(_ reference: Episode.Reference) -> String {
+  return [
+    reference.author,
+    reference.publishedAt.map(episodeDateFormatter.string(from:))
+    ]
+    .compactMap(id)
+    .joined(separator: " • ")
 }
 
 private let exercisesView = View<[Episode.Exercise]> { exercises -> [Node] in
@@ -628,11 +805,13 @@ private let exercisesView = View<[Episode.Exercise]> { exercises -> [Node] in
       ],
       [
         h2(
-          [`class`([Class.h4, Class.type.lineHeight(3), Class.padding([.mobile: [.top: 2]])])],
+          [
+            id("exercises"),
+            `class`([Class.h4, Class.type.lineHeight(3), Class.padding([.mobile: [.top: 2]])])
+          ],
           ["Exercises"]
         ),
         ol(
-          [id("exercises")],
           zip(1..., exercises).map {
             li(
               [id("exercise-\($0)")],
@@ -651,7 +830,7 @@ let transcriptBlockView = View<Episode.TranscriptBlock> { block -> Node in
     return pre([
       code(
         [`class`([Class.pf.components.code(lang: lang.identifier)])],
-        [text(block.content)]
+        [.text(block.content)]
       )
       ])
 
@@ -673,15 +852,22 @@ let transcriptBlockView = View<Episode.TranscriptBlock> { block -> Node in
       ]
     )
 
-  case let .image(src):
+  case let .image(src, sizing):
+    let imageClasses = sizing == .inset
+      ? [innerImageContainerClass,
+         Class.margin([.mobile: [.topBottom: 3]]),
+         Class.padding([.mobile: [.leftRight: 3]]),
+         Class.pf.colors.bg.white]
+      : [innerImageContainerClass]
+
     return a(
       [
         `class`([outerImageContainerClass, Class.margin([.mobile: [.topBottom: 3]])]),
         href(src),
         target(.blank),
-        rel(.value("noopener noreferrer")),
+        rel(.init(rawValue: "noopener noreferrer")),
       ],
-      [img(src: src, alt: "", [`class`([innerImageContainerClass])])]
+      [img(src: src, alt: "", [`class`(imageClasses)])]
     )
 
   case .paragraph:
@@ -699,7 +885,7 @@ let transcriptBlockView = View<Episode.TranscriptBlock> { block -> Node in
         .compactMap(id),
       [
         a(block.timestamp.map { [href("#t\($0)")] } ?? [], [
-          text(block.content)
+          .text(block.content)
           ])
       ]
     )
@@ -717,7 +903,8 @@ let transcriptBlockView = View<Episode.TranscriptBlock> { block -> Node in
             controls(true),
             playsinline(true),
             autoplay(false),
-            Html.poster(poster)
+            Html.poster(poster),
+            style(objectFit(.cover))
           ],
 
           sources.map { source(src: $0) }
@@ -736,7 +923,7 @@ private let timestampLinkView = View<Int?> { timestamp -> [Node] in
         timestampLinkAttributes(timestamp: timestamp, useAnchors: false) + [
           `class`([Class.pf.components.videoTimeLink])
         ],
-        [text(timestampLabel(for: timestamp))])
+        [.text(timestampLabel(for: timestamp))])
       ])
   ]
 }
@@ -779,17 +966,30 @@ let markdownBlockStyles: Stylesheet =
   markdownContainerClass % (
     hrMarkdownStyles
       <> aMarkdownStyles
-      <> blockquote % fontStyle(.italic)
-      <> p % key("word-wrap", "break-word")
-      <> (p & .pseudo(.not(.pseudo(.lastChild)))) % margin(bottom: .rem(1.5))
-      <> code % (
-        fontFamily(["monospace"])
-          <> padding(topBottom: .px(1), leftRight: .px(5))
-          <> borderWidth(all: .px(1))
-          <> borderRadius(all: .px(3))
-          <> backgroundColor(Color.other("#f7f7f7"))
-    )
+      <> ulMarkdownStyles
+      <> blockquoteMarkdownStyles
+      <> pMarkdownStyles
+      <> codeMarkdownStyles
 )
+
+private let ulMarkdownStyles: Stylesheet =
+  ul % margin(bottom: .rem(1.5))
+
+private let pMarkdownStyles: Stylesheet =
+  p % key("word-wrap", "break-word")
+    <> (p & .pseudo(.not(.pseudo(.lastChild)))) % margin(bottom: .rem(1.5))
+
+private let codeMarkdownStyles: Stylesheet =
+  code % (
+    fontFamily(["monospace"])
+      <> padding(topBottom: .px(1), leftRight: .px(5))
+      <> borderWidth(all: .px(1))
+      <> borderRadius(all: .px(3))
+      <> backgroundColor(Color.other("#f7f7f7"))
+)
+
+private let blockquoteMarkdownStyles: Stylesheet =
+  blockquote % fontStyle(.italic)
 
 private let aMarkdownStyles: Stylesheet =
   a % key("text-decoration", "underline")
@@ -811,9 +1011,9 @@ func markdownBlock(_ markdown: String) -> Node {
   return markdownBlock([], markdown)
 }
 
-func markdownBlock(_ attribs: [Attribute<Element.Div>] = [], _ markdown: String) -> Node {
+func markdownBlock(_ attribs: [Attribute<Tag.Div>] = [], _ markdown: String) -> Node {
   return div(addClasses([markdownContainerClass], to: attribs), [
-    .text(unsafeUnencodedString(unsafeMark(from: markdown)))
+    .raw(unsafeMark(from: markdown))
     ])
 }
 
@@ -822,15 +1022,6 @@ func unsafeMark(from markdown: String) -> String {
     else { return markdown }
   defer { free(cString) }
   return String(cString: cString)
-}
-
-private func isEpisodeViewable(
-  _ permission: EpisodePermission,
-  _ episode: Episode,
-  _ subscriberState: SubscriberState
-  ) -> Bool {
-
-  return !episode.subscriberOnly || subscriberState.isActiveSubscriber
 }
 
 private func isEpisodeViewable(for permission: EpisodePermission) -> Bool {

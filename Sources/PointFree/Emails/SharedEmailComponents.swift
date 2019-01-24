@@ -3,6 +3,7 @@ import HtmlCssSupport
 import Foundation
 import Styleguide
 import Prelude
+import View
 
 let hostSignOffView = View<Prelude.Unit> { _ in
   [
@@ -10,9 +11,9 @@ let hostSignOffView = View<Prelude.Unit> { _ in
       "Your hosts,"
       ]),
     p([
-      a([href(twitterUrl(to: .mbrandonw))], [.text(unsafeUnencodedString("Brandon&nbsp;Williams"))]),
+      a([href(twitterUrl(to: .mbrandonw))], [.raw("Brandon&nbsp;Williams")]),
       " & ",
-      a([href(twitterUrl(to: .stephencelis))], [.text(unsafeUnencodedString("Stephen&nbsp;Celis"))]),
+      a([href(twitterUrl(to: .stephencelis))], [.raw("Stephen&nbsp;Celis")]),
       ])
   ]
 }
@@ -45,7 +46,7 @@ private let unsubscribeView = View<(Database.User?, Database.EmailSetting.Newsle
 
   return [
     p([`class`([Class.pf.type.body.small])], [
-      text(subscribedReason(newsletter: newsletter)),
+      .text(subscribedReason(newsletter: newsletter)),
       " If you no longer wish to receive emails like this, you can unsubscribe ",
       a([href(url(to: .expressUnsubscribe(userId: user.id, newsletter: newsletter)))], ["here"]),
       "."
@@ -77,6 +78,6 @@ private func subscribedReason(newsletter: Database.EmailSetting.Newsletter) -> S
 }
 
 // TODO: move into a package for html email helpers.
-public func emailTable(_ attribs: [Attribute<Element.Table>], _ content: [ChildOf<Element.Table>]) -> Node {
+public func emailTable(_ attribs: [Attribute<Html.Tag.Table>], _ content: [ChildOf<Html.Tag.Table>]) -> Node {
   return table([border(0), cellpadding(0), cellspacing(0)] + attribs, content)
 }

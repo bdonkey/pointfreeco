@@ -9,6 +9,7 @@ import Optics
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let paymentInfoResponse =
   filterMap(require1 >>> pure, or: loginAndRedirect)
@@ -17,11 +18,11 @@ let paymentInfoResponse =
     >=> map(lower)
     >>> respond(
       view: paymentInfoView,
-      layoutData: { subscription, currentUser, expand, subscriberState in
+      layoutData: { subscription, currentUser, formFields, subscriberState in
         SimplePageLayoutData(
           currentSubscriberState: subscriberState,
           currentUser: currentUser,
-          data: (subscription, expand),
+          data: (subscription, formFields),
           title: "Update Payment Info"
         )
     }
@@ -58,14 +59,14 @@ let updatePaymentInfoMiddleware:
       }
 }
 
-let paymentInfoView = View<(Stripe.Subscription, Bool)> { subscription, expand in
+let paymentInfoView = View<(Stripe.Subscription, PricingFormStyle)> { subscription, formFields in
 
   gridRow([
     gridColumn(sizes: [.mobile: 12, .desktop: 8], [style(margin(leftRight: .auto))], [
       div([`class`([Class.padding([.mobile: [.all: 3], .desktop: [.all: 4]])])],
           titleRowView.view(unit)
             <> (subscription.customer.right?.sources.data.first.map(currentPaymentInfoRowView.view) ?? [])
-            <> updatePaymentInfoRowView.view(expand)
+            <> updatePaymentInfoRowView.view(formFields)
       )
       ])
     ])
@@ -86,21 +87,21 @@ private let currentPaymentInfoRowView = View<Stripe.Card> { card in
     gridColumn(sizes: [.mobile: 12], [
       div([
         h2([`class`([Class.pf.type.responsiveTitle4])], ["Current Payment Info"]),
-        p([text(card.brand.rawValue + " ending in " + String(card.last4))]),
-        p([text("Expires " + String(card.expMonth) + "/" + String(card.expYear))]),
+        p([.text(card.brand.rawValue + " ending in " + String(card.last4))]),
+        p([.text("Expires " + String(card.expMonth) + "/" + String(card.expYear))]),
         ])
       ])
     ])
 }
 
-private let updatePaymentInfoRowView = View<Bool> { expand in
+private let updatePaymentInfoRowView = View<PricingFormStyle> { formStyle in
   return gridRow([`class`([Class.padding([.mobile: [.bottom: 4]])])], [
     gridColumn(sizes: [.mobile: 12], [
       div([
         h2([`class`([Class.pf.type.responsiveTitle4])], ["Update"]),
         form(
           [action(path(to: .account(.paymentInfo(.update(nil))))), id(Stripe.html.formId), method(.post)],
-          Stripe.html.cardInput(expand: expand)
+          Stripe.html.cardInput(couponId: nil, formStyle: formStyle)
             <> Stripe.html.errors
             <> Stripe.html.scripts
             <> [

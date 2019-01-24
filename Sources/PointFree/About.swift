@@ -7,6 +7,7 @@ import HttpPipelineHtmlSupport
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let aboutResponse: Middleware<StatusLineOpen, ResponseEnded, Tuple3<Database.User?, SubscriberState, Route?>, Data> =
   writeStatus(.ok)
@@ -86,9 +87,7 @@ private let hostView = View<Host> { host in
     [`class`([Class.padding([.mobile: [.bottom: 3]])])],
     [
       img(
-        src: host.image,
-        alt: "Photo of \(host.name)",
-        [`class`([hostImgClass])]
+        [src(host.image), alt("Photo of \(host.name)"), `class`([hostImgClass])]
       ),
 
       div(
@@ -104,11 +103,11 @@ private let hostView = View<Host> { host in
                 ])
             ],
             [
-              text(host.name)
+              .text(host.name)
             ]
           ),
 
-          p([`class`([Class.pf.colors.fg.white, Class.pf.type.body.regular])], [text(host.bio)]),
+          p([`class`([Class.pf.colors.fg.white, Class.pf.type.body.regular])], [.text(host.bio)]),
 
           a(
             [
@@ -122,7 +121,7 @@ private let hostView = View<Host> { host in
               "Twitter",
               img(
                 base64: rightArrowSvgBase64(fill: "#ffffff"),
-                mediaType: .image(.svg),
+                type: .image(.svg),
                 alt: "",
                 [`class`([Class.align.middle, Class.margin([.mobile: [.left: 1]])]), width(16), height(16)]
               )
@@ -236,7 +235,7 @@ private let openSourceSection = View<Prelude.Unit> { _ in
 
     p([`class`([Class.pf.type.body.regular, Class.padding([.mobile: [.bottom: 2]])])], [
       "You can view the entire source code to this site on our GitHub organization, ",
-      a([href(gitHubUrl(to: .organization)), `class`([Class.pf.colors.link.purple])], [text(gitHubUrl(to: .organization))]),
+      a([href(gitHubUrl(to: .organization)), `class`([Class.pf.colors.link.purple])], [.text(gitHubUrl(to: .organization))]),
       "."
       ])
   ]

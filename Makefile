@@ -305,6 +305,7 @@ deploy-local:
 	@heroku container:release web -a pointfreeco-local
 
 deploy-production:
+	@heroku container:login
 	@heroku container:push web -a pointfreeco
 	@heroku container:release web -a pointfreeco
 
@@ -318,6 +319,9 @@ scorch-docker:
 	@docker container ls --all --quiet \
 		| xargs docker container stop \
 		&& docker system prune --all --force --volumes
+
+clean-snapshots:
+	find Tests -name "__Snapshots__" | xargs -n1 rm -fr
 
 SUDO = sudo --prompt=$(SUDO_PROMPT)
 SUDO_PROMPT = "  🔒 Please enter your password: "

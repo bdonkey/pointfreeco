@@ -9,6 +9,7 @@ import Optics
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let accountResponse: Middleware<StatusLineOpen, ResponseEnded, Tuple2<Database.User?, SubscriberState>, Data> =
   filterMap(require1 >>> pure, or: loginAndRedirect)
@@ -52,7 +53,11 @@ private func fetchAccountData<I>(
     .map(^\.stripeSubscriptionId)
     .flatMap(Current.stripe.fetchSubscription)
 
-  let everything = zip7(
+  let upcomingInvoice = stripeSubscription
+    .map(^\.customer >>> either(id, ^\.id))
+    .flatMap(Current.stripe.fetchUpcomingInvoice)
+
+  let everything = zip8(
     Current.database.fetchEmailSettingsForUserId(user.id).run.parallel
       .map { $0.right ?? [] },
 
@@ -69,7 +74,9 @@ private func fetchAccountData<I>(
       .map { $0.right ?? [] },
 
     Current.database.fetchSubscriptionTeammatesByOwnerId(user.id).run.parallel
-      .map { $0.right ?? [] }
+      .map { $0.right ?? [] },
+
+    upcomingInvoice.run.map(^\.right).parallel
   )
 
   return everything
@@ -85,7 +92,8 @@ private func fetchAccountData<I>(
             subscription: $3,
             subscriptionOwner: $4,
             teamInvites: $5,
-            teammates: $6
+            teammates: $6,
+            upcomingInvoice: $7
           )
         )
       )
@@ -94,12 +102,12 @@ private func fetchAccountData<I>(
 }
 
 private let accountView = View<AccountData> { data in
-
   gridRow([
     gridColumn(sizes: [.mobile: 12, .desktop: 8], [style(margin(leftRight: .auto))], [
       div([`class`([Class.padding([.mobile: [.all: 3], .desktop: [.all: 4]])])],
           titleRowView.view(unit)
             <> profileRowView.view(data)
+            <> privateRssFeed.view(data)
             <> subscriptionOverview.view(data)
             <> creditsView.view(data)
             <> logoutView.view(unit)
@@ -121,7 +129,7 @@ private let creditsView = View<AccountData> { data -> [Node] in
             h2([`class`([Class.pf.type.responsiveTitle4])], ["Episode Credits"]),
             p([
               "Episode credits allow you to see subscriber-only episodes before commiting to a full ",
-              text("subscription. You currently have \(pluralizedCredits(count: data.currentUser.episodeCreditCount)) "),
+              .text("subscription. You currently have \(pluralizedCredits(count: data.currentUser.episodeCreditCount)) "),
               "remaining."
               ])
             ]
@@ -186,7 +194,7 @@ private let episodeLinkView = View<Episode> { episode in
         ]
       )
     ],
-    [text("#\(episode.sequence): \(episode.title)")]
+    [.text("#\(episode.sequence): \(episode.title)")]
   )
 }
 
@@ -288,7 +296,7 @@ private let emailSettingCheckboxes = View<([Database.EmailSetting], SubscriberSt
             `class`([Class.margin([.mobile: [.right: 1]])])
           ]
         ),
-        text(newsletterDescription(newsletter))
+        .text(newsletterDescription(newsletter))
         ])
     })
   ]
@@ -318,6 +326,100 @@ private let subscriptionOverview = View<AccountData> { data -> [Node] in
   }
 }
 
+private let privateRssFeed = View<AccountData> { data -> [Node] in
+  guard Current.features.hasAccess(to: .podcastRss, for: data.currentUser) else { return [] }
+  guard data.subscriberState.isActiveSubscriber else { return [] }
+  let user = data.currentUser
+
+  return [
+    gridRow([
+      gridColumn(
+        sizes: [.desktop: 10, .mobile: 12],
+        [style(margin(leftRight: .auto))],
+        [
+          div(
+            [
+              `class`(
+                [
+                  Class.margin([.mobile: [.bottom: 4]]),
+                  Class.padding([.mobile: [.all: 3]]),
+                  Class.pf.colors.bg.gray900
+                ]
+              )
+            ],
+            [
+              h4(
+                [
+                  `class`(
+                    [
+                      Class.pf.type.responsiveTitle4,
+                      Class.padding([.mobile: [.bottom: 2]])
+                    ]
+                  )
+                ],
+                ["Private RSS Feed"]
+              ),
+              p(["""
+Thanks for subscribing to Point-Free and supporting our efforts! We'd like to offer you an alternate way
+to consume our videos: an RSS feed that can be used with podcast apps!
+"""]),
+              p([
+                "The link below should work with most podcast apps out there today (please ",
+                a(
+                  [
+                    `class`([Class.pf.type.underlineLink]),
+                    href("mailto:support@pointfree.co")
+                  ],
+                  ["email us"]
+                ),
+                " if it doesn't). It is also tied directly to your Point-Free account and regularly ",
+                " monitored, so please do not share with others."
+                ]),
+              p([
+                a(
+                  [
+                    `class`([Class.pf.type.underlineLink]),
+                    href(url(to: .account(.rss(userId: user.id, rssSalt: user.rssSalt))))
+                  ],
+                  [
+                    text(
+                      String(url(to: .account(.rss(userId: user.id, rssSalt: user.rssSalt))).prefix(40))
+                        + "..."
+                    )
+                  ]
+                )
+                ]
+              )
+            ] + rssTerms(stripeSubscription: data.stripeSubscription)
+          )
+        ]
+      )
+      ])
+  ]
+}
+
+private func rssTerms(stripeSubscription: Stripe.Subscription?) -> [Node] {
+  return stripeSubscription?.plan.interval == .some(.month)
+    ? [
+      p([
+        `class`([Class.padding([.mobile: [.all: 2]]), Class.margin([.mobile: [.top: 2]])]),
+        style(backgroundColor(.rgb(0xff, 0xff, 0xdd)))
+        ],
+        [
+          "Because you are on a monthly subscription plan, you get access to the last ",
+          .text("\(nonYearlyMaxRssItems) episodes in your RSS feed. To unlock access to all "),
+          "episodes in this feed, please consider ",
+          a(
+            [`class`([Class.pf.type.underlineLink]), href(path(to: .account(.subscription(.change(.show)))))],
+            ["upgrading"]
+          ),
+          " to a yearly subscription."
+        ]
+      )
+      ]
+    : []
+}
+
 private let subscriptionOwnerOverview = View<AccountData> { data -> [Node] in
   guard let subscription = data.stripeSubscription else { return [] }
 
@@ -329,7 +431,7 @@ private let subscriptionOwnerOverview = View<AccountData> { data -> [Node] in
 
           gridColumn(
             sizes: [.mobile: 12],
-            subscriptionPlanRows.view(subscription)
+            subscriptionPlanRows.view((subscription, data.upcomingInvoice))
               <> subscriptionTeamRow.view(data)
               <> subscriptionInvitesRowView.view(data.teamInvites)
               <> subscriptionInviteMoreRowView.view((subscription, data.teamInvites, data.teammates))
@@ -358,7 +460,7 @@ private let subscriptionTeammateOverview = View<AccountData> { data -> [Node] in
                 `class`([Class.pf.colors.link.purple])
               ],
               [
-                text(data.subscriptionOwner?.name ?? "the owner")
+                .text(data.subscriptionOwner?.name ?? "the owner")
               ]
             ),
             " for more information.",
@@ -403,26 +505,22 @@ public func status(for subscription: Stripe.Subscription) -> String {
   }
 }
 
-public func nextBilling(for subscription: Stripe.Subscription) -> String {
-  switch subscription.status {
-  case .active:
-    return totalAmount(for: subscription)
+public func nextBilling(for subscription: Stripe.Subscription, upcomingInvoice: Stripe.Invoice?) -> String {
+  switch (subscription.status, upcomingInvoice) {
+  case let (.active, .some(invoice)):
+    return format(cents: invoice.amountDue)
       + " on "
-      + dateFormatter.string(from: subscription.currentPeriodEnd)
-  case .canceled:
+      + dateFormatter.string(from: invoice.periodEnd)
+  case (.canceled, _):
     return subscription.currentPeriodEnd > Current.date()
       ? "Cancels " + dateFormatter.string(from: subscription.currentPeriodEnd)
       : "Canceled"
-  case .pastDue:
-    return "" // FIXME
-  case .unpaid:
-    return "" // FIXME
-  case .trialing:
+  case (.active, .none), (.pastDue, _), (.unpaid, _), (.trialing, _):
     return "" // FIXME
   }
 }
 
-private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> Node in
+private let subscriptionPlanRows = View<(Stripe.Subscription, Stripe.Invoice?)> { subscription, upcomingInvoice -> Node in
 
   let planRow = gridRow([
     gridColumn(sizes: [.mobile: 3], [
@@ -432,7 +530,7 @@ private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> N
       gridRow([
         gridColumn(sizes: [.mobile: 12, .desktop: 6], [
           div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-            p([text(planName(for: subscription))])
+            p([.text(planName(for: subscription))])
             ])
           ]),
         gridColumn(sizes: [.mobile: 12, .desktop: 6], [
@@ -452,7 +550,7 @@ private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> N
       gridRow([
         gridColumn(sizes: [.mobile: 12, .desktop: 6], [
           div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-            p([text(status(for: subscription))])
+            p([.text(status(for: subscription))])
             ])
           ])
         ])
@@ -467,7 +565,7 @@ private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> N
         ]),
       gridColumn(sizes: [.mobile: 9], [
         div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-          p([text(nextBilling(for: subscription))])
+          p([.text(nextBilling(for: subscription, upcomingInvoice: upcomingInvoice))])
           ])
         ])
       ])
@@ -479,7 +577,7 @@ private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> N
         ]),
       gridColumn(sizes: [.mobile: 9], [
         div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-          p([text(discountDescription(for: discount))])
+          p([.text(discountDescription(for: discount))])
           ])
         ])
       ])
@@ -491,14 +589,8 @@ private let subscriptionPlanRows = View<Stripe.Subscription> { subscription -> N
   )
 }
 
-private func discountDescription(for discount: Stripe.Subscription.Discount) -> String {
-  var result = "\(discount.coupon.name): "
-  if let percentOff = discount.coupon.percentOff {
-    result += "\(Int(percentOff))% off"
-  } else if let amountOff = discount.coupon.amountOff {
-    result += "$\(amountOff) off"
-  }
-  return result
+private func discountDescription(for discount: Stripe.Discount) -> String {
+  return "\(discount.coupon.name ?? discount.coupon.id.rawValue): \(discount.coupon.formattedDescription)"
 }
 
 private func mainAction(for subscription: Stripe.Subscription) -> Node {
@@ -558,7 +650,7 @@ private let teammateRowView = View<(Database.User, Database.User)> { currentUser
     : teammate.name.map { "\($0) (\(teammate.email))" } ?? teammate.email.rawValue
 
   return gridRow([
-    gridColumn(sizes: [.mobile: 8], [p([text(teammateLabel)])]),
+    gridColumn(sizes: [.mobile: 8], [p([.text(teammateLabel)])]),
     gridColumn(sizes: [.mobile: 4], [`class`([Class.grid.end(.desktop)])], [
       form([action(path(to: .team(.remove(teammate.id)))), method(.post)], [
         p([input([type(.submit), `class`([Class.pf.components.button(color: .purple, size: .small)]), value("Remove")])])
@@ -589,7 +681,7 @@ private let subscriptionInvitesRowView = View<[Database.TeamInvite]> { invites -
 private let inviteRowView = View<Database.TeamInvite> { invite in
   gridRow([
     gridColumn(sizes: [.mobile: 12, .desktop: 6], [
-      p([text(invite.email.rawValue)])
+      p([.text(invite.email.rawValue)])
       ]),
     gridColumn(sizes: [.mobile: 12, .desktop: 6], [`class`([Class.grid.end(.desktop)])], [
       form([action(path(to: .invite(.resend(invite.id)))), method(.post), `class`([Class.display.inlineBlock])], [
@@ -619,7 +711,7 @@ private let subscriptionInviteMoreRowView = View<(Stripe.Subscription?, [Databas
         ]),
       gridColumn(sizes: [.mobile: 9], [
         div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-          p([text("You have \(invitesRemaining) open spots on your team. Invite a team member below:")]),
+          p([.text("You have \(invitesRemaining) open spots on your team. Invite a team member below:")]),
 
           form([
             action(path(to: .invite(.send(nil)))), method(.post),
@@ -660,8 +752,8 @@ private let subscriptionPaymentInfoView = View<Stripe.Subscription> { subscripti
         gridRow([
           gridColumn(sizes: [.mobile: 12, .desktop: 6], [
             div([`class`([Class.padding([.mobile: [.leftRight: 1]])])], [
-              p([text(card.brand.rawValue + " ending in " + String(card.last4))]),
-              p([text("Expires " + String(card.expMonth) + "/" + String(card.expYear))]),
+              p([.text(card.brand.rawValue + " ending in " + String(card.last4))]),
+              p([.text("Expires " + String(card.expMonth) + "/" + String(card.expYear))]),
               ])
             ]),
           gridColumn(sizes: [.mobile: 12, .desktop: 6], [
@@ -692,10 +784,6 @@ public func format(cents: Stripe.Cents) -> String {
   let dollars = NSNumber(value: Double(cents.rawValue) / 100)
   return currencyFormatter.string(from: dollars)
     ?? NumberFormatter.localizedString(from: dollars, number: .currency)
-}
-
-private func totalAmount(for subscription: Stripe.Subscription) -> String {
-  return format(cents: subscription.plan.amount * .init(rawValue: subscription.quantity))
 }
 
 private let logoutView = View<Prelude.Unit> { _ in
@@ -759,6 +847,7 @@ private struct AccountData {
   let subscriptionOwner: Database.User?
   let teamInvites: [Database.TeamInvite]
   let teammates: [Database.User]
+  let upcomingInvoice: Stripe.Invoice?
 
   var isSubscriptionOwner: Bool {
     return self.currentUser.id == self.subscriptionOwner?.id

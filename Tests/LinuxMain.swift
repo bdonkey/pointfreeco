@@ -1,4 +1,4 @@
-// Generated using Sourcery 0.11.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 0.15.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 
 import XCTest
@@ -12,6 +12,8 @@ extension AboutTests {
 extension AccountTests {
   static var allTests: [(String, (AccountTests) -> () throws -> Void)] = [
     ("testAccount", testAccount),
+    ("testAccount_WithRssFeatureFlag", testAccount_WithRssFeatureFlag),
+    ("testTeam_OwnerIsNotSubscriber", testTeam_OwnerIsNotSubscriber),
     ("testAccount_WithExtraInvoiceInfo", testAccount_WithExtraInvoiceInfo),
     ("testAccountWithFlashNotice", testAccountWithFlashNotice),
     ("testAccountWithFlashWarning", testAccountWithFlashWarning),
@@ -31,7 +33,9 @@ extension AppleDeveloperMerchantIdDomainAssociationTests {
 }
 extension AtomFeedTests {
   static var allTests: [(String, (AtomFeedTests) -> () throws -> Void)] = [
-    ("testAtomFeed", testAtomFeed)
+    ("testAtomFeed", testAtomFeed),
+    ("testEpisodeFeed", testEpisodeFeed),
+    ("testEpisodeFeed_WithRecentlyFreeEpisode", testEpisodeFeed_WithRecentlyFreeEpisode)
   ]
 }
 extension AuthTests {
@@ -92,6 +96,7 @@ extension ChangeTests {
     ("testChangeShowNoSubscription", testChangeShowNoSubscription),
     ("testChangeShowCancelingSubscription", testChangeShowCancelingSubscription),
     ("testChangeShowCanceledSubscription", testChangeShowCanceledSubscription),
+    ("testChangeShowDiscountSubscription", testChangeShowDiscountSubscription),
     ("testChangeUpdateUpgradeIndividualPlan", testChangeUpdateUpgradeIndividualPlan),
     ("testChangeUpdateDowngradeIndividualPlan", testChangeUpdateDowngradeIndividualPlan),
     ("testChangeUpdateUpgradeTeamPlan", testChangeUpdateUpgradeTeamPlan),
@@ -106,6 +111,12 @@ extension ChangeTests {
 extension DatabaseTests {
   static var allTests: [(String, (DatabaseTests) -> () throws -> Void)] = [
     ("testCreate", testCreate)
+  ]
+}
+extension DiscountsTests {
+  static var allTests: [(String, (DiscountsTests) -> () throws -> Void)] = [
+    ("testDiscounts_LoggedOut", testDiscounts_LoggedOut),
+    ("testDiscounts_LoggedIn", testDiscounts_LoggedIn)
   ]
 }
 extension EitherIOTests {
@@ -146,12 +157,18 @@ extension EpisodeTests {
     ("testRedeemEpisodeCredit_NotEnoughCredits", testRedeemEpisodeCredit_NotEnoughCredits),
     ("testRedeemEpisodeCredit_PublicEpisode", testRedeemEpisodeCredit_PublicEpisode),
     ("testRedeemEpisodeCredit_AlreadyCredited", testRedeemEpisodeCredit_AlreadyCredited),
-    ("test_permission", test_permission)
+    ("test_permission", test_permission),
+    ("testEpisodePage_ExercisesAndReferences", testEpisodePage_ExercisesAndReferences)
   ]
 }
 extension FreeEpisodeEmailTests {
   static var allTests: [(String, (FreeEpisodeEmailTests) -> () throws -> Void)] = [
     ("testFreeEpisodeEmail", testFreeEpisodeEmail)
+  ]
+}
+extension GitHubTests {
+  static var allTests: [(String, (GitHubTests) -> () throws -> Void)] = [
+    ("testRequests", testRequests)
   ]
 }
 extension HomeTests {
@@ -204,7 +221,9 @@ extension NewBlogPostEmailTests {
     ("testNewBlogPostEmail_NoAnnouncements_Subscriber", testNewBlogPostEmail_NoAnnouncements_Subscriber),
     ("testNewBlogPostEmail_NoAnnouncements_NonSubscriber", testNewBlogPostEmail_NoAnnouncements_NonSubscriber),
     ("testNewBlogPostEmail_Announcements_Subscriber", testNewBlogPostEmail_Announcements_Subscriber),
-    ("testNewBlogPostEmail_Announcements_NonSubscriber", testNewBlogPostEmail_Announcements_NonSubscriber)
+    ("testNewBlogPostEmail_Announcements_NonSubscriber", testNewBlogPostEmail_Announcements_NonSubscriber),
+    ("testNewBlogPostRoute", testNewBlogPostRoute),
+    ("testNewBlogPostEmail_NoCoverImage", testNewBlogPostEmail_NoCoverImage)
   ]
 }
 extension NewEpisodeEmailTests {
@@ -237,6 +256,8 @@ extension PaymentInfoTests {
 extension PricingTests {
   static var allTests: [(String, (PricingTests) -> () throws -> Void)] = [
     ("testPricing", testPricing),
+    ("testDiscount", testDiscount),
+    ("testInvalidDiscount", testInvalidDiscount),
     ("testPricingLoggedIn_NonSubscriber", testPricingLoggedIn_NonSubscriber),
     ("testPricingLoggedIn_NonSubscriber_Expanded", testPricingLoggedIn_NonSubscriber_Expanded),
     ("testPricingLoggedIn_Subscriber", testPricingLoggedIn_Subscriber),
@@ -247,6 +268,15 @@ extension PricingTests {
 extension PrivacyTests {
   static var allTests: [(String, (PrivacyTests) -> () throws -> Void)] = [
     ("testPrivacy", testPrivacy)
+  ]
+}
+extension PrivateRssTests {
+  static var allTests: [(String, (PrivateRssTests) -> () throws -> Void)] = [
+    ("testFeed_Authenticated_Subscriber_Monthly", testFeed_Authenticated_Subscriber_Monthly),
+    ("testFeed_Authenticated_Subscriber_Yearly", testFeed_Authenticated_Subscriber_Yearly),
+    ("testFeed_Authenticated_NonSubscriber", testFeed_Authenticated_NonSubscriber),
+    ("testFeed_Authenticated_InActiveSubscriber", testFeed_Authenticated_InActiveSubscriber),
+    ("testFeed_BadSalt", testFeed_BadSalt)
   ]
 }
 extension RegistrationEmailTests {
@@ -267,7 +297,8 @@ extension StripeTests {
     ("testDecodingCustomer", testDecodingCustomer),
     ("testDecodingCustomer_Metadata", testDecodingCustomer_Metadata),
     ("testDecodingSubscriptionWithDiscount", testDecodingSubscriptionWithDiscount),
-    ("testDecodingDiscountJson", testDecodingDiscountJson)
+    ("testDecodingDiscountJson", testDecodingDiscountJson),
+    ("testRequests", testRequests)
   ]
 }
 extension StripeWebhooksTests {
@@ -336,12 +367,14 @@ XCTMain([
   testCase(ChangeEmailConfirmationTests.allTests),
   testCase(ChangeTests.allTests),
   testCase(DatabaseTests.allTests),
+  testCase(DiscountsTests.allTests),
   testCase(EitherIOTests.allTests),
   testCase(EmailInviteTests.allTests),
   testCase(EnvVarTests.allTests),
   testCase(EnvironmentTests.allTests),
   testCase(EpisodeTests.allTests),
   testCase(FreeEpisodeEmailTests.allTests),
+  testCase(GitHubTests.allTests),
   testCase(HomeTests.allTests),
   testCase(HtmlCssInlinerTests.allTests),
   testCase(InviteTests.allTests),
@@ -355,6 +388,7 @@ XCTMain([
   testCase(PaymentInfoTests.allTests),
   testCase(PricingTests.allTests),
   testCase(PrivacyTests.allTests),
+  testCase(PrivateRssTests.allTests),
   testCase(RegistrationEmailTests.allTests),
   testCase(SiteMiddlewareTests.allTests),
   testCase(StripeTests.allTests),

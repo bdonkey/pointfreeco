@@ -9,6 +9,7 @@ import HttpPipelineHtmlSupport
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 private let title = "Privacy Policy"
 
@@ -33,7 +34,7 @@ private let privacyView = View<Prelude.Unit> { _ in
     gridColumn(sizes: [.mobile: 12, .desktop: 8], [style(margin(leftRight: .auto))], [
       div(
         [`class`([Class.padding([.mobile: [.all: 3], .desktop: [.all: 4]])])],
-        [h1([`class`([Class.pf.type.responsiveTitle2])], [text(title)])]
+        [h1([`class`([Class.pf.type.responsiveTitle2])], [.text(title)])]
           <> privacyPolicy
           <> [
             p(

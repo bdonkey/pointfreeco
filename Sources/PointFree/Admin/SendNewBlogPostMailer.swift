@@ -9,6 +9,7 @@ import Optics
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let showNewBlogPostEmailMiddleware =
   requireAdmin
@@ -26,12 +27,30 @@ private let showNewBlogPostView = View<Database.User> { _ in
 
 private let newBlogPostEmailRowView = View<BlogPost> { post in
   p([
-    text("Blog Post: \(post.title)"),
+    .text("Blog Post: \(post.title)"),
 
-    form([action(path(to: .admin(.newBlogPostEmail(.send(post, subscriberAnnouncement: nil, nonSubscriberAnnouncement: nil, isTest: nil))))), method(.post)], [
+    form([action(path(to: .admin(.newBlogPostEmail(.send(post, formData: nil, isTest: nil))))), method(.post)], [
 
-      textarea([name("subscriber_announcement"), placeholder("Subscriber announcement")]),
-      textarea([name("nonsubscriber_announcement"), placeholder("Non-subscribers announcements")]),
+      input([
+        checked(true),
+        name(NewBlogPostFormData.CodingKeys.subscriberDeliver.rawValue),
+        type(.checkbox),
+        value("true"),
+        ]),
+      textarea([
+        name(NewBlogPostFormData.CodingKeys.subscriberAnnouncement.rawValue),
+        placeholder("Subscriber announcement")
+        ]),
+      input([
+        checked(true),
+        name(NewBlogPostFormData.CodingKeys.nonsubscriberDeliver.rawValue),
+        type(.checkbox),
+        value("true"),
+        ]),
+      textarea([
+        name(NewBlogPostFormData.CodingKeys.nonsubscriberAnnouncement.rawValue),
+        placeholder("Non-subscriber announcement")
+        ]),
 
       input([type(.submit), name("test"), value("Test email!")]),
       input([type(.submit), name("live"), value("Send email!")])
@@ -39,11 +58,25 @@ private let newBlogPostEmailRowView = View<BlogPost> { post in
     ])
 }
 
+public struct NewBlogPostFormData: Codable, Equatable {
+  let nonsubscriberAnnouncement: String
+  let nonsubscriberDeliver: Bool?
+  let subscriberAnnouncement: String
+  let subscriberDeliver: Bool?
+
+  fileprivate enum CodingKeys: String, CodingKey {
+    case nonsubscriberAnnouncement = "nonsubscriber_announcement"
+    case nonsubscriberDeliver = "nonsubscriber_deliver"
+    case subscriberAnnouncement = "subscriber_announcement"
+    case subscriberDeliver = "subscriber_deliver"
+  }
+}
+
 let sendNewBlogPostEmailMiddleware:
-  Middleware<StatusLineOpen, ResponseEnded, Tuple5<Database.User?, BlogPost, String?, String?, Bool?>, Data> =
+  Middleware<StatusLineOpen, ResponseEnded, Tuple4<Database.User?, BlogPost, NewBlogPostFormData?, Bool?>, Data> =
   requireAdmin
     <<< filterMap(
-      require5 >>> pure,
+      require4 >>> pure,
       or: redirect(to: .admin(.newBlogPostEmail(.index)))
     )
     <| sendNewBlogPostEmails
@@ -55,14 +88,30 @@ func fetchBlogPost(forId id: BlogPost.Id) -> BlogPost? {
 }
 
 private func sendNewBlogPostEmails<I>(
-  _ conn: Conn<I, Tuple5<Database.User, BlogPost, String?, String? , Bool>>
+  _ conn: Conn<I, Tuple4<Database.User, BlogPost, NewBlogPostFormData?, Bool>>
   ) -> IO<Conn<I, Prelude.Unit>> {
 
-  let (_, post, subscriberAnnouncement, nonSubscriberAnnouncement, isTest) = lower(conn.data)
+  let (_, post, optionalFormData, isTest) = lower(conn.data)
+
+  guard let formData = optionalFormData else {
+    return pure(conn.map(const(unit)))
+  }
+
+  let nonsubscriberOrSubscribersOnly: Either<Prelude.Unit, Prelude.Unit>?
+  switch (formData.nonsubscriberDeliver, formData.subscriberDeliver) {
+  case (.some(true), .some(true)):
+    nonsubscriberOrSubscribersOnly = nil
+  case (.some(true), _):
+    nonsubscriberOrSubscribersOnly = .left(unit)
+  case (_, .some(true)):
+    nonsubscriberOrSubscribersOnly = .right(unit)
+  case (_, _):
+    return pure(conn.map(const(unit)))
+  }
 
   let users = isTest
     ? Current.database.fetchAdmins()
-    : Current.database.fetchUsersSubscribedToNewsletter(.newBlogPost)
+    : Current.database.fetchUsersSubscribedToNewsletter(.newBlogPost, nonsubscriberOrSubscribersOnly)
 
   return users
     .mapExcept(bimap(const(unit), id))
@@ -70,8 +119,10 @@ private func sendNewBlogPostEmails<I>(
       sendEmail(
         forNewBlogPost: post,
         toUsers: users,
-        subscriberAnnouncement: subscriberAnnouncement,
-        nonSubscriberAnnouncement: nonSubscriberAnnouncement,
+        subscriberAnnouncement: formData.subscriberAnnouncement,
+        subscriberDeliver: formData.subscriberDeliver,
+        nonsubscriberAnnouncement: formData.nonsubscriberAnnouncement,
+        nonsubscriberDeliver: formData.nonsubscriberDeliver,
         isTest: isTest
       )
     }
@@ -82,8 +133,10 @@ private func sendNewBlogPostEmails<I>(
 private func sendEmail(
   forNewBlogPost post: BlogPost,
   toUsers users: [Database.User],
-  subscriberAnnouncement: String?,
-  nonSubscriberAnnouncement: String?,
+  subscriberAnnouncement: String,
+  subscriberDeliver: Bool?,
+  nonsubscriberAnnouncement: String,
+  nonsubscriberDeliver: Bool?,
   isTest: Bool
   ) -> EitherIO<Prelude.Unit, Prelude.Unit> {
 
@@ -91,7 +144,7 @@ private func sendEmail(
 
   // A personalized email to send to each user.
   let newBlogPostEmails = users.map { user in
-    lift(IO { newBlogPostEmail.view((post, subscriberAnnouncement, nonSubscriberAnnouncement, user)) })
+    lift(IO { newBlogPostEmail.view((post, subscriberAnnouncement, nonsubscriberAnnouncement, user)) })
       .flatMap { nodes in
         sendEmail(
           to: [user.email],

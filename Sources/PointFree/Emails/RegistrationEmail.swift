@@ -3,6 +3,7 @@ import HtmlCssSupport
 import Optics
 import Prelude
 import Styleguide
+import View
 
 let registrationEmailView = simpleEmailLayout(registrationEmailBody)
   .contramap { user in

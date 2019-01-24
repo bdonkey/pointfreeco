@@ -1,4 +1,4 @@
-// Generated using Sourcery 0.11.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 0.15.0 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 
 
@@ -139,17 +139,19 @@ import Prelude
       }
 
 
-      extension PartialIso where A == (
-        String
-      ), B == Route {
 
-        public static let discounts = parenthesize <| PartialIso(
-          apply: Route.discounts,
-          unapply: {
-            guard case let .discounts(result) = $0 else { return nil }
-            return .some(result)
-        })
+      extension PartialIso where A == (
+            Stripe.Coupon.Id
+        ), B == Route {
+
+          public static let discounts = parenthesize <| PartialIso(
+            apply: Route.discounts,
+            unapply: {
+              guard case let .discounts(result) = $0 else { return nil }
+              return .some(result)
+          })
       }
+
 
 
       extension PartialIso where A == (
@@ -426,6 +428,22 @@ import Prelude
 
 
       extension PartialIso where A == (
+            Database.User.Id
+          , 
+            Database.User.RssSalt
+        ), B == Route.Account {
+
+          public static let rss = parenthesize <| PartialIso(
+            apply: Route.Account.rss,
+            unapply: {
+              guard case let .rss(result) = $0 else { return nil }
+              return .some(result)
+          })
+      }
+
+
+
+      extension PartialIso where A == (
             Route.Account.Subscription
         ), B == Route.Account {
 
@@ -689,9 +707,7 @@ import Prelude
       extension PartialIso where A == (
             BlogPost
           , 
-            String?
-          , 
-            String?
+            NewBlogPostFormData?
           , 
             Bool?
         ), B == Route.Admin.NewBlogPostEmail {
@@ -703,18 +719,6 @@ import Prelude
               return .some(result)
           })
       }
-
-
-
-      extension PartialIso where A == Prelude.Unit, B == Route {
-        public static let fika = parenthesize <| PartialIso<Prelude.Unit, Route>(
-          apply: const(.some(.fika)),
-          unapply: {
-            guard case .fika = $0 else { return nil }
-            return .some(Prelude.unit)
-        })
-      }
-
 
 
 
@@ -760,16 +764,13 @@ import Prelude
 
 
 
-      extension PartialIso where A == (
-            Route.Feed
-        ), B == Route.Blog {
-
-          public static let feed = parenthesize <| PartialIso(
-            apply: Route.Blog.feed,
-            unapply: {
-              guard case let .feed(result) = $0 else { return nil }
-              return .some(result)
-          })
+      extension PartialIso where A == Prelude.Unit, B == Route.Blog {
+        public static let feed = parenthesize <| PartialIso<Prelude.Unit, Route.Blog>(
+          apply: const(.some(.feed)),
+          unapply: {
+            guard case .feed = $0 else { return nil }
+            return .some(Prelude.unit)
+        })
       }
 
 
@@ -804,6 +805,17 @@ import Prelude
           apply: const(.some(.atom)),
           unapply: {
             guard case .atom = $0 else { return nil }
+            return .some(Prelude.unit)
+        })
+      }
+
+
+
+      extension PartialIso where A == Prelude.Unit, B == Route.Feed {
+        public static let episodes = parenthesize <| PartialIso<Prelude.Unit, Route.Feed>(
+          apply: const(.some(.episodes)),
+          unapply: {
+            guard case .episodes = $0 else { return nil }
             return .some(Prelude.unit)
         })
       }
