@@ -2,26 +2,25 @@ import Foundation
 
 let ep4 = Episode(
   blurb: """
-What does the Swift type system have to do with algebra? A lot! We’ll begin to explore this correspondence 
+What does the Swift type system have to do with algebra? A lot! We’ll begin to explore this correspondence \
 and see how it can help us create type-safe data structures that can catch runtime errors at compile time.
 """,
   codeSampleDirectory: "0004-algebraic-data-types",
-  id: 4,
   exercises: exercises,
+  fullVideo: .init(
+    bytesLength: 723_938_138,
+    downloadUrl: "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/full-720p-A84B9044-ADFD-488C-AF6E-EEDA4259B534.mp4",
+    streamingSource: "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/full/0004-adt.m3u8"
+  ),
+  id: 4,
   image: "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/0004-poster.jpg",
+  itunesImage: "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/itunes-poster.jpg",
   length: 2_172,
   permission: .free,
   publishedAt: Date(timeIntervalSince1970: 1_519_045_951),
   sequence: 4,
-  sourcesFull: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/hls-math-is-useful.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/webm-math-is-useful.webm",
-    ],
-  sourcesTrailer: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/trailer/hls-trailer.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0004-adt/trailer/webm-trailer.webm",
-    ],
   title: "Algebraic Data Types",
+  trailerVideo: nil,
   transcriptBlocks: transcriptBlocks
 )
 
@@ -400,7 +399,7 @@ With this intuition, let's wipe away all of the names of the types, and just foc
   ),
   Episode.TranscriptBlock(
     content: """
-We call `A * B` the product of the types `A` and `B`. And now that we are thinking a little bit more abstractly, we don't can even loosen our intuition around `Pair<A, B>` being the literal multiplication of the number of elements in `A` and `B`. While that is indeed true for types with finitely many values, that doesn't really help us with things like:
+We call `A * B` the product of the types `A` and `B`. And now that we are thinking a little bit more abstractly, we can even loosen our intuition around `Pair<A, B>` being the literal multiplication of the number of elements in `A` and `B`. While that is indeed true for types with finitely many values, that doesn't really help us with things like:
 """,
     timestamp: nil,
     type: .paragraph
@@ -1099,13 +1098,13 @@ There are a lot of representable states here that don't make sense. They even ju
 It was brought to our attention by one of our viewers, [Ole Begemann](http://twitter.com/olebegemann), that
 it is in fact possible for `URLResponse` and `Error` to be non-`nil` at the same time. He wrote a great
 [blog post](https://oleb.net/blog/2018/03/making-illegal-states-unrepresentable/) about this, and we
-discuss this correct at the beginning of our follow up episode,
+discuss this correction at the beginning of our follow up episode,
 [Algebraic Data Types: Exponents](/episodes/ep9-algebraic-data-types-exponents).
 """,
     timestamp: nil,
     type: .correction
   ),
-  
+
   .init(
     content: """
 When you work with this interface, you may notice that when you `if let` over the cases you expect, you inevitably end up with a branch that you need to `fatalError`, and just hope it never gets called.

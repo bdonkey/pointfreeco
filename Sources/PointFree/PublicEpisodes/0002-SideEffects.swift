@@ -5,22 +5,21 @@ let ep2 = Episode(
 Side effects: can’t live with ’em; can’t write a program without ’em. Let’s explore a few kinds of side effects we encounter every day, why they make code difficult to reason about and test, and how we can control them without losing composition.
 """,
   codeSampleDirectory: "0002-side-effects",
-  id: 2,
   exercises: [],
+  fullVideo: .init(
+    bytesLength: 890_410_175,
+    downloadUrl: "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/full-720p-BB35D372-8907-4CA2-AAEB-82B5BB5F1311.mp4",
+    streamingSource: "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/full/0002-side-effects.m3u8"
+  ),
+  id: 2,
   image: "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/0002-poster.jpg",
+  itunesImage: "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/itunes-poster.jpg",
   length: 2676,
   permission: .free,
   publishedAt: Date(timeIntervalSince1970: 1_517_811_069),
   sequence: 2,
-  sourcesFull: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/hls-fish-and-diamonds.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/webm-fish-and-diamonds.webm"
-  ],
-  sourcesTrailer: [
-    "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/trailer/hls.m3u8",
-    "https://d1hf1soyumxcgv.cloudfront.net/0002-side-effects/trailer/webm.webm"
-  ],
   title: "Side Effects",
+  trailerVideo: nil,
   transcriptBlocks: transcriptBlocks
 )
 
@@ -162,7 +161,7 @@ But if we look at our console, there's some _additional_ output here.
 Computed 5
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -193,7 +192,7 @@ Computed 5
 Computed 5
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -249,7 +248,7 @@ Computed 101
 Computed 10202
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -410,7 +409,7 @@ Computed 5
 Computed 26
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1304,7 +1303,7 @@ We get a compiler error!
 Cannot pass immutable value as inout argument: 'config' is a 'let' constant
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1336,7 +1335,7 @@ But that wasn't enough. We have another compiler error!
 Passing value of type 'NumberFormatterConfig' to an inout parameter requires explicit '&'
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """
@@ -1607,7 +1606,7 @@ Our `inout` version produces an error.
 Cannot convert value of type '(inout Int) -> ()' to expected argument type '(_) -> _'
 """,
     timestamp: nil,
-    type: .code(lang: .other("txt"))
+    type: .code(lang: .plainText)
   ),
   Episode.TranscriptBlock(
     content: """

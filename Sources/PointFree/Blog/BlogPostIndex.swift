@@ -6,6 +6,7 @@ import HttpPipeline
 import Prelude
 import Styleguide
 import Tuple
+import View
 
 let blogIndexMiddleware: (Conn<StatusLineOpen, Tuple3<Database.User?, SubscriberState, Route?>>) -> IO<Conn<ResponseEnded, Data>> =
   writeStatus(.ok)
@@ -85,7 +86,7 @@ private let oldBlogPostView = View<BlogPost> { post in
           [
             p(
               [`class`([Class.pf.colors.fg.gray400, Class.pf.type.body.small])],
-              [text(episodeDateFormatter.string(from: post.publishedAt))]
+              [.text(episodeDateFormatter.string(from: post.publishedAt))]
             )
           ]
         ),
@@ -95,7 +96,7 @@ private let oldBlogPostView = View<BlogPost> { post in
           [
             a(
               [href(url(to: .blog(.show(post))))],
-              [text(post.title)]
+              [.text(post.title)]
             )
           ]
         ),
@@ -104,7 +105,7 @@ private let oldBlogPostView = View<BlogPost> { post in
           [
             p(
               [`class`([Class.pf.type.body.regular])],
-              [text(post.blurb)]
+              [.text(post.blurb)]
             )
           ]
         )

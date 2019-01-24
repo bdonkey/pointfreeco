@@ -8,19 +8,18 @@ import UrlFormEncoding
 
 public protocol DerivePartialIsos {}
 
-public enum Route: DerivePartialIsos {
+public enum Route: DerivePartialIsos, Equatable {
   case about
   case account(Account)
   case admin(Admin)
   case appleDeveloperMerchantIdDomainAssociation
   case blog(Blog)
-  case discounts(organization: String)
+  case discounts(code: Stripe.Coupon.Id)
   case episode(Either<String, Int>)
   case episodes
   case expressUnsubscribe(userId: Database.User.Id, newsletter: Database.EmailSetting.Newsletter)
   case expressUnsubscribeReply(MailgunForwardPayload)
   case feed(Feed)
-  case fika
   case gitHubCallback(code: String?, redirect: String?)
   case invite(Invite)
   case login(redirect: String?)
@@ -33,75 +32,46 @@ public enum Route: DerivePartialIsos {
   case useEpisodeCredit(Episode.Id)
   case webhooks(Webhooks)
 
-  public enum Blog: DerivePartialIsos {
-    case feed(Feed)
+  public enum Blog: DerivePartialIsos, Equatable {
+    case feed
     case index
     case show(BlogPost)
   }
 
-  public enum Account: DerivePartialIsos {
-    case confirmEmailChange(userId: Database.User.Id, emailAddress: EmailAddress)
-    case index
-    case invoices(Invoices)
-    case paymentInfo(PaymentInfo)
-    case subscription(Subscription)
-    case update(ProfileData?)
-
-    public enum Invoices: DerivePartialIsos {
-      case index
-      case show(Stripe.Invoice.Id)
-    }
-
-    public enum PaymentInfo: DerivePartialIsos {
-      case show(expand: Bool?)
-      case update(Stripe.Token.Id?)
-    }
-
-    public enum Subscription: DerivePartialIsos {
-      case cancel
-      case change(Change)
-      case reactivate
-
-      public enum Change: DerivePartialIsos {
-        case show
-        case update(Pricing?)
-      }
-    }
-  }
-
-  public enum Admin: DerivePartialIsos {
+  public enum Admin: DerivePartialIsos, Equatable {
     case episodeCredits(EpisodeCredit)
     case freeEpisodeEmail(FreeEpisodeEmail)
     case index
     case newBlogPostEmail(NewBlogPostEmail)
     case newEpisodeEmail(NewEpisodeEmail)
 
-    public enum EpisodeCredit: DerivePartialIsos {
+    public enum EpisodeCredit: DerivePartialIsos, Equatable {
       case add(userId: Database.User.Id?, episodeSequence: Int?)
       case show
     }
 
-    public enum FreeEpisodeEmail: DerivePartialIsos {
+    public enum FreeEpisodeEmail: DerivePartialIsos, Equatable {
       case send(Episode.Id)
       case index
     }
 
-    public enum NewBlogPostEmail: DerivePartialIsos {
-      case send(BlogPost, subscriberAnnouncement: String?, nonSubscriberAnnouncement: String?, isTest: Bool?)
+    public enum NewBlogPostEmail: DerivePartialIsos, Equatable {
+      case send(BlogPost, formData: NewBlogPostFormData?, isTest: Bool?)
       case index
     }
 
-    public enum NewEpisodeEmail: DerivePartialIsos {
+    public enum NewEpisodeEmail: DerivePartialIsos, Equatable {
       case send(Episode.Id, subscriberAnnouncement: String?, nonSubscriberAnnouncement: String?, isTest: Bool?)
       case show
     }
   }
 
-  public enum Feed: DerivePartialIsos {
+  public enum Feed: DerivePartialIsos, Equatable {
     case atom
+    case episodes
   }
 
-  public enum Invite: DerivePartialIsos {
+  public enum Invite: DerivePartialIsos, Equatable {
     case accept(Database.TeamInvite.Id)
     case resend(Database.TeamInvite.Id)
     case revoke(Database.TeamInvite.Id)
@@ -109,15 +79,15 @@ public enum Route: DerivePartialIsos {
     case show(Database.TeamInvite.Id)
   }
 
-  public enum Team: DerivePartialIsos {
+  public enum Team: DerivePartialIsos, Equatable {
     case leave
     case remove(Database.User.Id)
   }
 
-  public enum Webhooks: DerivePartialIsos {
+  public enum Webhooks: DerivePartialIsos, Equatable {
     case stripe(Stripe)
 
-    public enum Stripe: DerivePartialIsos {
+    public enum Stripe: DerivePartialIsos, Equatable {
       case event(PointFree.Stripe.Event<Either<PointFree.Stripe.Invoice, PointFree.Stripe.Subscription>>)
       case `fallthrough`
     }
@@ -129,46 +99,8 @@ private let routers: [Router<Route>] = [
   .about
     <¢> get %> lit("about") <% end,
 
-  .account <<< .confirmEmailChange
-    <¢> get %> lit("account") %> lit("confirm-email-change")
-    %> queryParam("payload", .appDecrypted >>> payload(.uuid >>> .tagged, .tagged))
-    <% end,
-
-  .account <<< .index
-    <¢> get %> lit("account") <% end,
-
-  .account <<< .invoices <<< .index
-    <¢> get %> lit("account") %> lit("invoices") <% end,
-
-  .account <<< .invoices <<< .show
-    <¢> get %> lit("account") %> lit("invoices") %> pathParam(.string >>> .tagged) <% end,
-
-  .account <<< .paymentInfo <<< .show
-    <¢> get %> lit("account") %> lit("payment-info")
-    %> queryParam("expand", opt(.bool))
-    <% end,
-
-  .account <<< .paymentInfo <<< .update
-    <¢> post %> lit("account") %> lit("payment-info")
-    %> formField("token", Optional.iso.some >>> opt(.string >>> .tagged))
-    <% end,
-
-  .account <<< .subscription <<< .cancel
-    <¢> post %> lit("account") %> lit("subscription") %> lit("cancel") <% end,
-
-  .account <<< .subscription <<< .change <<< .show
-    <¢> get %> lit("account") %> lit("subscription") %> lit("change") <% end,
-
-  .account <<< .subscription <<< .change <<< .update
-    <¢> post %> lit("account") %> lit("subscription") %> lit("change")
-    %> formBody(Pricing?.self, decoder: formDecoder)
-    <% end,
-
-  .account <<< .subscription <<< .reactivate
-    <¢> post %> lit("account") %> lit("subscription") %> lit("reactivate") <% end,
-
-  .account <<< .update
-    <¢> post %> lit("account") %> formBody(ProfileData?.self, decoder: formDecoder) <% end,
+  .account
+    <¢> lit("account") %> accountRouter,
 
   .admin <<< .episodeCredits <<< .add
     <¢> post %> lit("admin") %> lit("episode-credits") %> lit("add")
@@ -193,8 +125,7 @@ private let routers: [Router<Route>] = [
 
   .admin <<< .newBlogPostEmail <<< PartialIso.send
     <¢> post %> lit("admin") %> lit("new-blog-post-email") %> pathParam(.int >>> .tagged >>> .blogPostFromId) <%> lit("send")
-    %> formField("subscriber_announcement", .string).map(Optional.iso.some)
-    <%> formField("nonsubscriber_announcement", .string).map(Optional.iso.some)
+    %> formBody(NewBlogPostFormData?.self, decoder: formDecoder)
     <%> isTest
     <% end,
 
@@ -211,11 +142,11 @@ private let routers: [Router<Route>] = [
   .appleDeveloperMerchantIdDomainAssociation
     <¢> get %> lit(".well-known") %> lit("apple-developer-merchantid-domain-association"),
 
-  .blog <<< .feed <<< .atom
+  .blog <<< .feed
     <¢> get %> lit("blog") %> lit("feed") %> lit("atom.xml") <% end,
 
   .discounts
-    <¢> get %> lit("discounts") %> .string <% end,
+    <¢> get %> lit("discounts") %> pathParam(.string >>> .tagged) <% end,
 
   .blog <<< .index
     <¢> get %> lit("blog") <% end,
@@ -232,8 +163,8 @@ private let routers: [Router<Route>] = [
   .feed <<< .atom
     <¢> get %> lit("feed") %> lit("atom.xml") <% end,
 
-  .fika
-    <¢> get %> lit("fika") <% end,
+  .feed <<< .episodes
+    <¢> (get <|> head) %> lit("feed") %> lit("episodes.xml") <% end,
 
   .expressUnsubscribe
     <¢> get %> lit("newsletters") %> lit("express-unsubscribe")
@@ -315,7 +246,7 @@ private let routers: [Router<Route>] = [
     <¢> post %> lit("webhooks") %> lit("stripe") <% end,
 ]
 
-private let formDecoder = UrlFormDecoder()
+let formDecoder = UrlFormDecoder()
   |> \.parsingStrategy .~ .bracketsWithIndices
 
 public let router = routers.reduce(.empty, <|>)
@@ -328,16 +259,16 @@ public func url(to route: Route) -> String {
   return router.url(for: route, base: Current.envVars.baseUrl)?.absoluteString ?? ""
 }
 
-extension PartialIso where A == String, B == Tag {
-  public static var tag: PartialIso<String, Tag> {
-    return PartialIso<String, Tag>(
-      apply: Tag.init(slug:),
+extension PartialIso where A == String, B == SiteTag {
+  public static var tag: PartialIso<String, SiteTag> {
+    return PartialIso<String, SiteTag>(
+      apply: SiteTag.init(slug:),
       unapply: ^\.name
     )
   }
 }
 
-public struct MailgunForwardPayload: Codable {
+public struct MailgunForwardPayload: Codable, Equatable {
   public let recipient: EmailAddress
   public let timestamp: Int
   public let token: String

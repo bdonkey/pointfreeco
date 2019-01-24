@@ -8,6 +8,7 @@ import HttpPipelineHtmlSupport
 import Optics
 import Prelude
 import Styleguide
+import View
 
 let newEpisodeEmail = simpleEmailLayout(newEpisodeEmailContent)
   .contramap { episode, subscriberAnnouncement, nonSubscriberAnnouncement, user in
@@ -36,12 +37,12 @@ let newEpisodeEmailContent = View<(Episode, String?, isSubscriber: Bool)> { ep, 
             announcementView.view(announcement) <> [
 
               a([href(url(to: .episode(.left(ep.slug))))], [
-                h3([`class`([Class.pf.type.responsiveTitle3])], [text("#\(ep.sequence): \(ep.title)")]),
+                h3([`class`([Class.pf.type.responsiveTitle3])], [.text("#\(ep.sequence): \(ep.title)")]),
                 ]),
-              p([text(ep.blurb)]),
+              p([.text(ep.blurb)]),
               p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
                 a([href(url(to: .episode(.left(ep.slug))))], [
-                  img(src: ep.image, alt: "", [style(maxWidth(.pct(100)))])
+                  img([src(ep.image), alt(""), style(maxWidth(.pct(100)))])
                   ])
                 ])
               ]
@@ -88,7 +89,7 @@ private let nonSubscriberCtaView = View<(Episode, isSubscriber: Bool)> { ep, isS
     : "Watch"
 
   return [
-    p([text(blurb)]),
+    p([.text(blurb)]),
     p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
       a([href(url(to: .pricing(nil, expand: nil))), `class`([Class.pf.components.button(color: .purple)])],
         ["Subscribe to Point-Free!"]
@@ -98,7 +99,7 @@ private let nonSubscriberCtaView = View<(Episode, isSubscriber: Bool)> { ep, isS
           href(url(to: .episode(.left(ep.slug)))),
             `class`([Class.pf.components.button(color: .black, style: .underline), Class.display.inlineBlock])
         ],
-        [text(watchText)]
+        [.text(watchText)]
       )
       ])
   ]
@@ -108,7 +109,7 @@ private let subscriberCtaView = View<(Episode, isSubscriber: Bool)> { (ep, isSub
   guard isSubscriber else { return [] }
 
   return [
-    p([text("This episode is \(ep.length / 60) minutes long.")]),
+    p([.text("This episode is \(ep.length / 60) minutes long.")]),
     p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
       a([href(url(to: .episode(.left(ep.slug)))), `class`([Class.pf.components.button(color: .purple)])],
         ["Watch now!"])

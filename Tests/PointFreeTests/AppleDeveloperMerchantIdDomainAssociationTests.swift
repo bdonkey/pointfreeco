@@ -1,6 +1,5 @@
 import Either
 import Html
-import HtmlPrettyPrint
 import HttpPipeline
 @testable import PointFree
 import PointFreeTestSupport
@@ -15,6 +14,6 @@ final class AppleDeveloperMerchantIdDomainAssociationTests: TestCase {
       |> siteMiddleware
       |> Prelude.perform
 
-    assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
   }
 }

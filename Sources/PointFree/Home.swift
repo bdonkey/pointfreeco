@@ -9,6 +9,7 @@ import Prelude
 import Styleguide
 import Tuple
 import UrlFormEncoding
+import View
 
 let homeMiddleware: Middleware<StatusLineOpen, ResponseEnded, Tuple3<Database.User?, SubscriberState, Route?>, Data> =
   writeStatus(.ok)
@@ -21,9 +22,7 @@ let homeMiddleware: Middleware<StatusLineOpen, ResponseEnded, Tuple3<Database.Us
           currentSubscriberState: subscriberState,
           currentUser: currentUser,
           data: (currentUser, subscriberState),
-          description: "Point-Free is a video series exploring functional programming and Swift.",
           extraStyles: markdownBlockStyles <> pricingExtraStyles,
-          image: "https://d3rccdn33rt8ze.cloudfront.net/social-assets/twitter-card-large.png",
           openGraphType: .website,
           style: .base(.mountains(.main)),
           title: "Point-Free: A video series on functional programming and the Swift programming language.",
@@ -43,7 +42,11 @@ let homeView = View<(Database.User?, SubscriberState)> { currentUser, subscriber
   return episodesListView.view(firstBatch)
     <> subscriberCalloutView.view(subscriberState)
     <> episodesListView.view(secondBatch)
-    <> (subscriberState.isNonSubscriber ? pricingOptionsView.view((currentUser, .default, false)) : [])
+    <> (
+      subscriberState.isNonSubscriber
+        ? pricingOptionsView.view((currentUser, .default, .minimal, nil, nil))
+        : []
+  )
 }
 
 private let subscriberCalloutView = View<SubscriberState> { subscriberState -> [Node] in
@@ -112,9 +115,7 @@ private let episodeRowView = View<Episode> { ep in
         div([`class`([Class.size.height100pct]), style(lineHeight(0) <> gradient <> minHeight(.px(300)))], [
           a([href(path(to: .episode(.left(ep.slug))))], [
             img(
-              src: ep.image,
-              alt: "",
-              [`class`([Class.size.width100pct, Class.size.height100pct]),
+              [src(ep.image), alt(""), `class`([Class.size.width100pct, Class.size.height100pct]),
                style(objectFit(.cover))]
             )
             ])
@@ -132,10 +133,10 @@ private let episodeInfoColumnView = View<Episode> { ep in
         a(
           [href(path(to: .episode(.left(ep.slug)))), `class`([Class.align.middle, Class.pf.colors.link.purple, Class.pf.type.body.regular])],
           [
-            text("Watch episode (\(ep.length / 60) min)"),
+            .text("Watch episode (\(ep.length / 60) min)"),
             img(
               base64: rightArrowSvgBase64(fill: "#974DFF"),
-              mediaType: .image(.svg),
+              type: .image(.svg),
               alt: "",
               [`class`([Class.align.middle, Class.margin([.mobile: [.left: 1]])]), width(16), height(16)]
             )

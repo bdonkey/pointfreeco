@@ -1,6 +1,5 @@
 import Either
 import Html
-import HtmlPrettyPrint
 import HttpPipeline
 @testable import PointFree
 import PointFreeTestSupport
@@ -16,23 +15,23 @@ class PaymentInfoTests: TestCase {
   override func setUp() {
     super.setUp()
     update(&Current, \.database .~ .mock)
+//    record=true
   }
 
   func testRender() {
     let conn = connection(from: request(to: .account(.paymentInfo(.show(expand: nil))), session: .loggedIn))
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1080, height: 2000))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 400
-      assertSnapshot(matching: webView, named: "mobile")
-
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1080, height: 2000)),
+          "mobile": .ioConnWebView(size: .init(width: 400, height: 2000))
+        ]
+      )
     }
     #endif
   }

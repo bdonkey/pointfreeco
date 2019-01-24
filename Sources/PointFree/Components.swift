@@ -40,15 +40,16 @@ func gitHubLink(text: String, type: GitHubLinkType, redirect: String?) -> Node {
     [
       img(
         base64: gitHubSvgBase64(fill: type.iconFillColor),
-        mediaType: .image(.svg),
+        type: .image(.svg),
         alt: "",
         [
           `class`([Class.margin([.mobile: [.right: 1]])]),
           style(margin(bottom: .px(-4))),
           width(20),
-          height(20)]
+          height(20)
+        ]
       ),
-      span([Html.text(text)])
+      span([.text(text)])
     ]
   )
 }
@@ -69,7 +70,7 @@ func twitterShareLink(text: String, url: String, via: String? = nil) -> Node {
   return a(
     [
       href(tweetHref),
-      onclick(unsafeJavascript: """
+      onclick(unsafe: """
       window.open(
         "\(tweetHref)",
         "newwindow",
@@ -77,14 +78,14 @@ func twitterShareLink(text: String, url: String, via: String? = nil) -> Node {
       );
       """),
       target(.blank),
-      rel(.value("noopener noreferrer")),
+      rel(.init(rawValue: "noopener noreferrer")),
       `class`([twitterLinkButtonClass]),
       style(twitterLinkButtonStyle)
     ],
     [
       img(
         base64: twitterLogoSvg,
-        mediaType: .image(.svg),
+        type: .image(.svg),
         alt: "",
         [
           style(twitterButtonIconStyle),

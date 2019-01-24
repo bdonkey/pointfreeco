@@ -8,6 +8,7 @@ import HttpPipelineHtmlSupport
 import Optics
 import Prelude
 import Styleguide
+import View
 
 let newBlogPostEmail = simpleEmailLayout(newBlogPostEmailContent)
   .contramap { post, subscriberAnnouncement, nonSubscriberAnnouncement, user in
@@ -26,7 +27,7 @@ let newBlogPostEmail = simpleEmailLayout(newBlogPostEmailContent)
     )
 }
 
-let newBlogPostEmailContent = View<(BlogPost, String?)> { post, announcement in
+let newBlogPostEmailContent = View<(BlogPost, String?)> { post, announcement -> Node in
   emailTable([style(contentTableStyles)], [
     tr([
       td([valign(.top)], [
@@ -37,28 +38,34 @@ let newBlogPostEmailContent = View<(BlogPost, String?)> { post, announcement in
 
         div([`class`([Class.padding([.mobile: [.all: 0], .desktop: [.all: 2]])])], [
           a([href(url(to: .blog(.show(post))))], [
-            h3([`class`([Class.pf.type.responsiveTitle3])], [text(post.title)]),
+            h3([`class`([Class.pf.type.responsiveTitle3])], [.text(post.title)]),
             ]),
-          p([text(post.blurb)]),
-          p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
-            a([href(url(to: .blog(.show(post))))], [
-              img(src: post.coverImage, alt: "", [style(maxWidth(.pct(100)))])
-              ])
-            ]),
-
-          a(
-            [
-              href(url(to: .blog(.show(post)))),
-              `class`(
-                [
-                  Class.pf.colors.link.purple,
-                  Class.pf.colors.fg.purple,
-                  Class.pf.type.body.leading
+            p([text(post.blurb)])
+          ]
+          + (
+            post.coverImage.map {
+              [
+                p([`class`([Class.padding([.mobile: [.topBottom: 2]])])], [
+                  a([href(url(to: .blog(.show(post))))], [
+                    img([src($0), alt(""), style(maxWidth(.pct(100)))])
+                    ])
+                  ]),
                 ]
-              )
-            ],
-            ["Read the full post…"]
-          )
+              } ?? [])
+          + [
+            a(
+              [
+                href(url(to: .blog(.show(post)))),
+                `class`(
+                  [
+                    Class.pf.colors.link.purple,
+                    Class.pf.colors.fg.purple,
+                    Class.pf.type.body.leading
+                  ]
+                )
+              ],
+              ["Read the full post…"]
+            )
           ]),
 
         div(
@@ -113,15 +120,15 @@ let newBlogPostEmailAdminReportEmailContent = View<([Database.User], Int)> { err
           h3([`class`([Class.pf.type.responsiveTitle3])], ["New blog post email report"]),
           p([
             "A total of ",
-            strong([text("\(totalAttempted)")]),
+            strong([.text("\(totalAttempted)")]),
             " emails were attempted to be sent, and of those, ",
-            strong([text("\(erroredUsers.count)")]),
+            strong([.text("\(erroredUsers.count)")]),
             " emails failed to send. Here is the list of users that we ",
             "had trouble sending to their emails:"
             ]),
 
           ul(erroredUsers.map { user in
-            li([text(user.name.map { "\($0) (\(user.email)" } ?? user.email.rawValue)])
+            li([.text(user.name.map { "\($0) (\(user.email)" } ?? user.email.rawValue)])
           })
           ])
         ])

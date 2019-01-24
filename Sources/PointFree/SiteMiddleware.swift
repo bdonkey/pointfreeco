@@ -9,7 +9,6 @@ import Tuple
 
 public let siteMiddleware: Middleware<StatusLineOpen, ResponseEnded, Prelude.Unit, Data> =
   requestLogger { Current.logger.info($0) }
-    <<< responseTimeout(25)
     <<< requireHerokuHttps(allowedInsecureHosts: allowedInsecureHosts)
     <<< redirectUnrelatedHosts(isAllowedHost: { isAllowed(host: $0) }, canonicalHost: canonicalHost)
     <<< route(router: router, notFound: routeNotFoundMiddleware)
@@ -28,49 +27,9 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
       return conn.map(const(user .*. subscriberState .*. route .*. unit))
         |> aboutResponse
 
-    case let .account(.confirmEmailChange(userId, emailAddress)):
-      return conn.map(const(userId .*. emailAddress .*. unit))
-        |> confirmEmailChangeMiddleware
-
-    case .account(.index):
-      return conn.map(const(user .*. subscriberState .*. unit))
-        |> accountResponse
-
-    case .account(.invoices(.index)):
-      return conn.map(const(user .*. subscriberState .*. unit))
-        |> invoicesResponse
-
-    case let .account(.invoices(.show(invoiceId))):
-      return conn.map(const(user .*. invoiceId .*. unit))
-        |> invoiceResponse
-
-    case let .account(.paymentInfo(.show(expand))):
-      return conn.map(const(user .*. (expand ?? false) .*. subscriberState .*. unit))
-        |> paymentInfoResponse
-
-    case let .account(.paymentInfo(.update(token))):
-      return conn.map(const(user .*. token .*. unit))
-        |> updatePaymentInfoMiddleware
-
-    case .account(.subscription(.cancel)):
-      return conn.map(const(user .*. unit))
-        |> cancelMiddleware
-
-    case .account(.subscription(.change(.show))):
-      return conn.map(const(user .*. subscriberState .*. unit))
-        |> subscriptionChangeShowResponse
-
-    case let .account(.subscription(.change(.update(pricing)))):
-      return conn.map(const(user .*. pricing .*. unit))
-        |> subscriptionChangeMiddleware
-
-    case .account(.subscription(.reactivate)):
-      return conn.map(const(user .*. unit))
-        |> reactivateMiddleware
-
-    case let .account(.update(data)):
-      return conn.map(const(user .*. data .*. unit))
-        |> updateProfileMiddleware
+    case let .account(account):
+      return conn.map(const(subscription .*. user .*. subscriberState .*. account .*. unit))
+        |> renderAccount
 
     case let .admin(.episodeCredits(.add(userId: userId, episodeSequence: episodeSequence))):
       return conn.map(const(user .*. userId .*. episodeSequence .*. unit))
@@ -92,8 +51,8 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
       return conn.map(const(user .*. episodeId .*. unit))
         |> sendFreeEpisodeEmailMiddleware
 
-    case let .admin(.newBlogPostEmail(.send(blogPost, subscriberAnnouncement, nonSubscriberAnnouncement, isTest))):
-      return conn.map(const(user .*. blogPost .*. subscriberAnnouncement .*. nonSubscriberAnnouncement .*. isTest .*. unit))
+    case let .admin(.newBlogPostEmail(.send(blogPost, formData, isTest))):
+      return conn.map(const(user .*. blogPost .*. formData .*. isTest .*. unit))
         |> sendNewBlogPostEmailMiddleware
 
     case .admin(.newBlogPostEmail(.index)):
@@ -116,9 +75,9 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
       return conn.map(const(user .*. subscriberState .*. route .*. subRoute .*. unit))
         |> blogMiddleware
 
-    case .discounts:
-      return conn.map(const(user .*. .default .*. true .*. route .*. unit))
-        |> pricingResponse
+    case let .discounts(couponId):
+      return conn.map(const(user .*. .default .*. .minimal .*. couponId .*. route .*. unit))
+        |> discountResponse
 
     case let .episode(param):
       return conn.map(const(param .*. user .*. subscriberState .*. route .*. unit))
@@ -140,9 +99,9 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
       return conn.map(const(Current.episodes()))
         |> atomFeedResponse
 
-    case .fika:
-      return conn.map(const(user .*. .default .*. true .*. route .*. unit))
-        |> pricingResponse
+    case .feed(.episodes):
+      return conn.map(const(unit))
+        |> episodesRssMiddleware
 
     case let .gitHubCallback(code, redirect):
       return conn.map(const(user .*. code .*. redirect .*. unit))
@@ -177,7 +136,17 @@ private func render(conn: Conn<StatusLineOpen, T3<Database.Subscription?, Databa
         |> logoutResponse
 
     case let .pricing(pricing, expand):
-      return conn.map(const(user .*. (pricing ?? .default) .*. (expand ?? false) .*. route .*. unit))
+      return conn
+        .map(
+          const(
+            user
+              .*. (pricing ?? .default)
+              .*. (expand == .some(true) ? .full : .minimal)
+              .*. nil
+              .*. route
+              .*. unit
+          )
+        )
         |> pricingResponse
 
     case .privacy:

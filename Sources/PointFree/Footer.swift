@@ -1,8 +1,10 @@
 import Css
+import Foundation
 import Html
 import HtmlCssSupport
 import Styleguide
 import Prelude
+import View
 
 let footerView: View<Database.User?> =
   curry(footer)([`class`([footerClass])]) >>> pure
@@ -29,7 +31,7 @@ private let linksColumnsView = View<Database.User?> { currentUser in
 
 private let legalView = View<Prelude.Unit> { _ in
   p([`class`([legalClass, Class.padding([.mobile: [.top: 2]])])], [
-    "© 2018 Point-Free, Inc. All rights are reserved for the videos and transcripts on this site. ",
+    .text("© \(year) Point-Free, Inc. All rights are reserved for the videos and transcripts on this site. "),
     "All other content is licensed under ",
     a([`class`([Class.pf.colors.link.gray650]),
        href("https://creativecommons.org/licenses/by-nc-sa/4.0/")],
@@ -50,12 +52,12 @@ private let pointFreeView = View<Prelude.Unit> { _ -> Node in
       "A video series on functional programming and the Swift programming language. Hosted by ",
       a(
         [href(twitterUrl(to: .mbrandonw)), `class`([Class.type.textDecorationNone, Class.pf.colors.link.green])],
-        [.text(unsafeUnencodedString("Brandon&nbsp;Williams"))]
+        [.raw("Brandon&nbsp;Williams")]
       ),
       " and ",
       a(
         [href(twitterUrl(to: .stephencelis)), `class`([Class.type.textDecorationNone, Class.pf.colors.link.green])],
-        [.text(unsafeUnencodedString("Stephen&nbsp;Celis"))]
+        [.raw("Stephen&nbsp;Celis")]
       ),
       "."
       ]),
@@ -133,3 +135,7 @@ private let columnTitleClass =
 private let legalClass =
   Class.pf.colors.fg.gray400
     | Class.pf.type.body.small
+
+private var year: Int {
+  return Calendar(identifier: .gregorian).component(.year, from: Current.date())
+}

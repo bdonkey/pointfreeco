@@ -1,6 +1,5 @@
 import Either
 import Html
-import HtmlPrettyPrint
 import HttpPipeline
 @testable import PointFree
 import PointFreeTestSupport
@@ -16,24 +15,25 @@ class EpisodeTests: TestCase {
   override func setUp() {
     super.setUp()
     update(&Current, \.database .~ .mock)
+//    record = true
   }
 
   func testEpisodePage() {
     let episode = request(to: .episode(.left(Current.episodes().first!.slug)), session: .loggedOut)
 
     let conn = connection(from: episode)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1800))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 2100)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 2100))
+        ]
+      )
     }
     #endif
   }
@@ -42,18 +42,18 @@ class EpisodeTests: TestCase {
     let episode = request(to: .episode(.left(Current.episodes().first!.slug)), session: .loggedIn)
 
     let conn = connection(from: episode)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 2200))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 2300)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 2300))
+        ]
+      )
     }
     #endif
   }
@@ -67,18 +67,18 @@ class EpisodeTests: TestCase {
     let episode = request(to: .episode(.left(freeEpisode.slug)), session: .loggedOut)
 
     let conn = connection(from: episode)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1800))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 2100)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 2100))
+        ]
+      )
     }
     #endif
   }
@@ -92,18 +92,18 @@ class EpisodeTests: TestCase {
     let episode = request(to: .episode(.left(freeEpisode.slug)), session: .loggedIn)
 
     let conn = connection(from: episode)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1800))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 2100)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 2100))
+        ]
+      )
     }
     #endif
   }
@@ -112,15 +112,15 @@ class EpisodeTests: TestCase {
     let episode = request(to: .episode(.left("object-oriented-programming")))
 
     let conn = connection(from: episode)
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1000))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView)
+      assertSnapshot(
+        matching: conn |> siteMiddleware,
+        as: .ioConnWebView(size: .init(width: 1100, height: 1000))
+      )
     }
     #endif
   }
@@ -144,18 +144,18 @@ class EpisodeTests: TestCase {
     let conn = connection(
       from: request(to: .episode(.left(episode.slug)), session: .loggedIn)
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1800))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 1800)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 1800))
+        ]
+      )
     }
     #endif
   }
@@ -179,18 +179,18 @@ class EpisodeTests: TestCase {
     let conn = connection(
       from: request(to: .episode(.left(Current.episodes().first!.slug)), session: .loggedIn)
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1800))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 1800)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 1800))
+        ]
+      )
     }
     #endif
   }
@@ -214,18 +214,18 @@ class EpisodeTests: TestCase {
     let conn = connection(
       from: request(to: .episode(.left(Current.episodes().first!.slug)), session: .loggedIn)
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     #if !os(Linux)
     if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
-      let webView = WKWebView(frame: .init(x: 0, y: 0, width: 1100, height: 1800))
-      webView.loadHTMLString(String(decoding: result.perform().data, as: UTF8.self), baseURL: nil)
-      assertSnapshot(matching: webView, named: "desktop")
-
-      webView.frame.size.width = 500
-      assertSnapshot(matching: webView, named: "mobile")
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 2100)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 2100))
+        ]
+      )
     }
     #endif
   }
@@ -252,9 +252,8 @@ class EpisodeTests: TestCase {
         to: .useEpisodeCredit(episode.id), session: Session.init(flash: nil, userId: user.id)
       )
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     XCTAssertEqual(
       [credit],
@@ -286,9 +285,8 @@ class EpisodeTests: TestCase {
         to: .useEpisodeCredit(episode.id), session: Session.init(flash: nil, userId: user.id)
       )
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     XCTAssertEqual(
       [],
@@ -320,9 +318,8 @@ class EpisodeTests: TestCase {
         to: .useEpisodeCredit(episode.id), session: Session.init(flash: nil, userId: user.id)
       )
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     XCTAssertEqual(
       [],
@@ -357,9 +354,8 @@ class EpisodeTests: TestCase {
         to: .useEpisodeCredit(episode.id), session: Session.init(flash: nil, userId: user.id)
       )
     )
-    let result = conn |> siteMiddleware
 
-    assertSnapshot(matching: result.perform())
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
 
     XCTAssertEqual(
       [credit],
@@ -386,4 +382,35 @@ class EpisodeTests: TestCase {
     update(&Current, \.date .~ { end.addingTimeInterval(1) })
     XCTAssertTrue(episode.subscriberOnly)
   }
+
+  func testEpisodePage_ExercisesAndReferences() { 
+    let episode = Current.episodes()[0]
+      |> \.exercises .~ [.mock]
+      |> \.references .~ [.mock]
+      |> \.transcriptBlocks %~ { Array($0[0...1]) }
+
+    update(
+      &Current,
+      \.episodes .~ { [episode] }
+    )
+
+    let conn = connection(
+      from: request(to: .episode(.left(Current.episodes().first!.slug)), session: .loggedIn)
+    )
+
+    assertSnapshot(matching: conn |> siteMiddleware, as: .ioConn)
+
+    #if !os(Linux)
+    if #available(OSX 10.13, *), ProcessInfo.processInfo.environment["CIRCLECI"] == nil {
+      assertSnapshots(
+        matching: conn |> siteMiddleware,
+        as: [
+          "desktop": .ioConnWebView(size: .init(width: 1100, height: 1600)),
+          "mobile": .ioConnWebView(size: .init(width: 500, height: 1900))
+        ]
+      )
+    }
+    #endif
+  }
+
 }

@@ -9,8 +9,9 @@ import Optics
 import Prelude
 import Styleguide
 import Tuple
+import View
 
-public struct Pricing {
+public struct Pricing: Equatable {
   var billing: Billing
   var quantity: Int
 
@@ -92,23 +93,60 @@ extension Pricing: Codable {
   }
 }
 
-let pricingResponse =
+private let couponError = "That coupon code is invalid or has expired."
+
+let discountResponse: Middleware<StatusLineOpen, ResponseEnded, Tuple5<Database.User?, Pricing, PricingFormStyle, Stripe.Coupon.Id, Route?>, Data> =
   redirectActiveSubscribers(user: get1)
-    <| writeStatus(.ok)
+    <<< filterMap(
+      over4(fetchCoupon) >>> sequence4 >>> map(require4),
+      or: redirect(to: .pricing(nil, expand: nil), headersMiddleware: flash(.error, couponError))
+    )
+    <<< filter(
+      get4 >>> ^\.valid,
+      or: redirect(to: .pricing(nil, expand: nil), headersMiddleware: flash(.error, couponError))
+    )
+    <| map(over4(Optional.some)) >>> pure
+    >=> basePricingResponse
+
+let pricingResponse: Middleware<StatusLineOpen, ResponseEnded, Tuple5<Database.User?, Pricing, PricingFormStyle, Stripe.Coupon.Id?, Route?>, Data> =
+  redirectActiveSubscribers(user: get1)
+    <| map(over4(const(Stripe.Coupon?.none))) >>> pure
+    >=> basePricingResponse
+
+let basePricingResponse: Middleware<StatusLineOpen, ResponseEnded, Tuple5<Database.User?, Pricing, PricingFormStyle, Stripe.Coupon?, Route?>, Data> =
+  writeStatus(.ok)
     >=> map(lower)
     >>> respond(
       view: pricingView,
-      layoutData: { currentUser, pricing, expand, route in
+      layoutData: { currentUser, pricing, formStyle, coupon, route in
         SimplePageLayoutData(
           currentRoute: route,
           currentUser: currentUser,
-          data: (currentUser, pricing, expand),
+          data: (currentUser, pricing, formStyle, coupon, route),
+          description: pricingPageDescription(coupon: coupon),
           extraStyles: pricingExtraStyles <> whatToExpectStyles,
           style: .base(.minimal(.dark)),
           title: "Subscribe to Point-Free"
         )
     }
 )
+
+private func pricingPageDescription(coupon: Stripe.Coupon?) -> String {
+  return coupon.map {
+    """
+Limited time Point-Free discount: Get \($0.formattedDescription). Subscribe today!
+"""
+  } ?? """
+Subscribe to an individual or team membership on Point-Free, a video series exploring Swift \
+and Functional Programming
+"""
+}
+
+private func fetchCoupon(_ couponId: Stripe.Coupon.Id) -> IO<Stripe.Coupon?> {
+  return Current.stripe.fetchCoupon(couponId)
+    .run
+    .map(^\.right)
+}
 
 private let pricingView =
   pricingOptionsView
@@ -119,14 +157,19 @@ private let pricingOptionsRowClass =
     | Class.grid.center(.mobile)
     | Class.padding([.mobile: [.topBottom: 3, .leftRight: 2], .desktop: [.topBottom: 4, .leftRight: 0]])
 
-let pricingOptionsView = View<(Database.User?, Pricing, Bool)> { currentUser, pricing, expand in
+public enum PricingFormStyle {
+  case minimal
+  case full
+}
+
+let pricingOptionsView = View<(Database.User?, Pricing, PricingFormStyle, Stripe.Coupon?, Route?)> { currentUser, pricing, formStyle, coupon, route in
 
   gridRow([`class`([pricingOptionsRowClass])], [
     gridColumn(sizes: [.mobile: 12, .desktop: 7], [], [
       div([
         h2(
           [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle2])],
-          [.text(unsafeUnencodedString("Subscribe to Point&#8209;Free"))]
+          [.raw("Subscribe to Point&#8209;Free")]
         ),
 
         p(
@@ -146,13 +189,13 @@ let pricingOptionsView = View<(Database.User?, Pricing, Bool)> { currentUser, pr
                 action(path(to: .subscribe(nil))),
                 id(Stripe.html.formId),
                 method(.post),
-                onsubmit(javascript: "event.preventDefault()")
+                onsubmit("event.preventDefault()")
               ],
               pricingTabsView.view(pricing)
                 <> [div([`class`([Class.margin([.mobile: [.bottom: 3]])])], [])]
                 <> quantityRowView.view(pricing)
-                <> pricingIntervalRowView.view(pricing)
-                <> pricingFooterView.view((currentUser, expand))
+                <> pricingIntervalRowView.view((pricing, coupon))
+                <> pricingFooterView.view((currentUser, formStyle, coupon?.id, route))
             )
             ])
           ])
@@ -178,7 +221,7 @@ private let whatToExpect = View<Prelude.Unit> { _ in
   [
     h4(
       [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle4])],
-      [.text(unsafeUnencodedString("What to expect?"))]
+      [.raw("What to expect?")]
     ),
 
     p(
@@ -198,7 +241,7 @@ private let topicsView = View<Prelude.Unit> { _ in
   [
     h4(
       [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle4, Class.padding([.mobile: [.top: 2]])])],
-      [.text(unsafeUnencodedString("What kind of topics will you cover?"))]
+      [.raw("What kind of topics will you cover?")]
     ),
 
     p(
@@ -226,7 +269,7 @@ private let suggestATopic = View<Prelude.Unit> { _ in
   [
     h4(
       [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle4, Class.padding([.mobile: [.top: 2]])])],
-      [.text(unsafeUnencodedString("Can I suggest a topic?"))]
+      [.raw("Can I suggest a topic?")]
     ),
 
     p(
@@ -247,7 +290,7 @@ private let studentDiscounts = View<Prelude.Unit> { _ in
   [
     h4(
       [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle4, Class.padding([.mobile: [.top: 2]])])],
-      [text("Do you offer student discounts?")]
+      [.text("Do you offer student discounts?")]
     ),
 
     p(
@@ -266,7 +309,7 @@ private let whoAreYou = View<Prelude.Unit> { _ in
   [
     h4(
       [`class`([Class.pf.colors.fg.white, Class.pf.type.responsiveTitle4, Class.padding([.mobile: [.top: 2]])])],
-      [.text(unsafeUnencodedString("Who are you?"))]
+      [.raw("Who are you?")]
     ),
 
     p(
@@ -346,28 +389,50 @@ private let pricingTabsView = View<Pricing> { pricing in
   ]
 }
 
-private let pricingIntervalRowView = View<Pricing> { pricing in
+private let pricingIntervalRowView = View<(Pricing, Stripe.Coupon?)> { pricing, coupon in
   gridRow(
     [`class`([Class.pf.colors.bg.white])],
-    individualPricingColumnView.view((.monthly, pricing))
-      <> individualPricingColumnView.view((.yearly, pricing))
+    individualPricingColumnView.view((.monthly, pricing, coupon))
+      <> individualPricingColumnView.view((.yearly, pricing, coupon))
       <> [
-        gridColumn(sizes: [.mobile: 12], [`class`([Class.pf.colors.bg.white])], [
-          p([
-            `class`([
-              selectors.content.1,
-              Class.padding([.mobile: [.bottom: 1]]),
-              Class.pf.colors.fg.gray400,
-              Class.pf.type.body.small,
-              Class.size.width100pct,
-              Class.type.align.center,
-              Class.type.normal,
-              ])
-            ],
-            ["20% off the Individual Monthly plan"])
+        gridColumn(
+          sizes: [.mobile: 12], [`class`([Class.pf.colors.bg.white])],
+          (
+            coupon
+              .map {
+                [
+                  p([
+                    `class`([
+                      selectors.content.0,
+                      Class.padding([.mobile: [.bottom: 1]]),
+                      Class.pf.colors.fg.gray400,
+                      Class.pf.type.body.small,
+                      Class.size.width100pct,
+                      Class.type.align.center,
+                      Class.type.normal,
+                      ])
+                    ],
+                    [.text("You get \($0.formattedDescription) for using the \($0.name ?? $0.id.rawValue) coupon.")])
+                ]
+              }
+              ?? []
+            )
+            <> [
+              p([
+                `class`([
+                  selectors.content.1,
+                  Class.padding([.mobile: [.bottom: 1]]),
+                  Class.pf.colors.fg.gray400,
+                  Class.pf.type.body.small,
+                  Class.size.width100pct,
+                  Class.type.align.center,
+                  Class.type.normal,
+                  ])
+                ],
+                ["20% off the Individual Monthly plan"]
+              )
           ])
-    ]
-  )
+    ])
 }
 
 func isChecked(_ billing: Pricing.Billing, _ pricing: Pricing) -> Bool {
@@ -376,9 +441,8 @@ func isChecked(_ billing: Pricing.Billing, _ pricing: Pricing) -> Bool {
 
 let teamPriceClass = CssSelector.class("team-price")
 
-private let individualPricingColumnView = View<(Pricing.Billing, Pricing)> { billing, pricing -> Node in
-return
-  gridColumn(sizes: [.mobile: 6], [`class`([Class.pf.colors.bg.white])], [
+private let individualPricingColumnView = View<(Pricing.Billing, Pricing, Stripe.Coupon?)> { billing, pricing, coupon -> Node in
+  return gridColumn(sizes: [.mobile: 6], [`class`([Class.pf.colors.bg.white])], [
     label([`for`(billing.rawValue), `class`([Class.display.block, Class.margin([.mobile: [.all: 3]])])], [
       gridRow([style(flex(direction: .columnReverse))], [
         input([
@@ -391,22 +455,22 @@ return
         gridColumn(sizes: [.mobile: 12], [], [
           h2([`class`([Class.pf.type.responsiveTitle2, Class.type.light, Class.pf.colors.fg.gray650])], [
             span([`class`([selectors.content.0])], [
-              text(individualPricingText(for: billing)),
+              .text(individualPricingText(for: billing, coupon: coupon)),
               ]),
             span([`class`([selectors.content.1])], [
               "$",
               span(
                 [`class`([teamPriceClass]), data("price", String(defaultTeamPricing(for: billing)))],
-                [text(String(defaultTeamPricing(for: billing) * clamp(Pricing.validTeamQuantities)(pricing.quantity)))]
+                [.text(String(defaultTeamPricing(for: billing) * clamp(Pricing.validTeamQuantities)(pricing.quantity)))]
               ),
               "/",
-              text(pricingInterval(for: billing)),
+              .text(pricingInterval(for: billing)),
               ]),
             ]),
           ]),
         gridColumn(sizes: [.mobile: 12], [], [
           h6([`class`([Class.pf.type.responsiveTitle7, Class.pf.colors.fg.gray650, Class.display.inline])], [
-            text(title(for: billing))
+            .text(title(for: billing))
             ]),
           ]),
         ]),
@@ -498,32 +562,61 @@ let extraSpinnerStyles =
     <> (input & .elem(.other("::-webkit-inner-spin-button"))) % opacity(1)
     <> (input & .elem(.other("::-webkit-outer-spin-button"))) % opacity(1)
 
-private let pricingFooterView = View<(Database.User?, Bool)> { currentUser, expand in
+private let pricingFooterView = View<(Database.User?, PricingFormStyle, Stripe.Coupon.Id?, Route?)> { currentUser, formStyle, couponId, route in
   gridRow([`class`([Class.pf.colors.bg.white])], [
     gridColumn(sizes: [.mobile: 12], [], [
       div(
         [`class`([Class.padding([.mobile: [.top: 2, .bottom: 3]])])],
         currentUser
-          .map(const(stripeForm.view(expand)))
-          ?? [gitHubLink(text: "Sign in with GitHub", type: .black, redirectRoute: .pricing(nil, expand: expand))]
-        )
+          .map(const(stripeForm.view((couponId, formStyle))))
+          ?? (
+            loggedOutStripeForm.view(couponId)
+              <> [
+                gitHubLink(
+                  text: "Sign in with GitHub",
+                  type: .black,
+                  redirectRoute: route ?? .pricing(nil, expand: false)
+                )
+            ])
+      )
       ])
     ])
 }
 
-private let stripeForm = View<Bool> { expand in
+private let stripeForm = View<(Stripe.Coupon.Id?, PricingFormStyle)> { couponId, formStyle in
   div(
     [`class`([Class.padding([.mobile: [.left: 3, .right: 3]])])],
-    Stripe.html.cardInput(expand: expand)
+    Stripe.html.cardInput(couponId: couponId, formStyle: formStyle)
       <> Stripe.html.errors
       <> Stripe.html.scripts
       <> [
         button(
           [`class`([Class.pf.components.button(color: .purple), Class.margin([.mobile: [.top: 3]])])],
-          ["Subscribe to Point", .text(unsafeUnencodedString("&#8209;")), "Free"]
+          ["Subscribe to Point", .raw("&#8209;"), "Free"]
         )
     ]
   )
+}
+
+private let loggedOutStripeForm = View<Stripe.Coupon.Id?> { couponId -> [Node] in
+  guard let couponId = couponId else { return [] }
+  return [
+    div(
+      [`class`([Class.padding([.mobile: [.left: 3, .right: 3, .bottom: 2]])])],
+      [
+        div([
+          input([
+            `class`([blockInputClass]),
+            disabled(true),
+            name("coupon"),
+            placeholder("Coupon Code"),
+            type(.text),
+            value(couponId.rawValue)
+            ]),
+          ]),
+        ]
+    )
+  ]
 }
 
 func title(for type: Pricing.Billing) -> String {
@@ -535,13 +628,25 @@ func title(for type: Pricing.Billing) -> String {
   }
 }
 
-func individualPricingText(for type: Pricing.Billing) -> String {
+private func individualTeamPricing(for type: Pricing.Billing, coupon: Stripe.Coupon?) -> Double {
+  let rate = 1 - (Double(coupon?.rate.percentOff ?? 0) / 100)
+
   switch type {
   case .monthly:
-    return "$17/" + pricingInterval(for: type)
+    return 17 * rate
   case .yearly:
-    return "$170/" + pricingInterval(for: type)
+    return 170 * rate
   }
+}
+
+func individualPricingText(for type: Pricing.Billing, coupon: Stripe.Coupon?) -> String {
+  let value = Double(Int(individualTeamPricing(for: type, coupon: coupon) * 100)) / 100
+
+  let formatted = value.truncatingRemainder(dividingBy: 1) == 0
+    ? "$\(Int(value))"
+    : (currencyFormatter.string(from: NSNumber(value: value)) ?? "$\(value)")
+
+  return formatted + "/" + pricingInterval(for: type)
 }
 
 private func defaultTeamPricing(for type: Pricing.Billing) -> Int {

@@ -1,6 +1,5 @@
 import Either
 import Html
-import HtmlPrettyPrint
 import HttpPipeline
 @testable import PointFree
 import PointFreeTestSupport
@@ -13,6 +12,7 @@ final class SubscribeTests: TestCase {
   override func setUp() {
     super.setUp()
     update(&Current, \.database .~ .mock)
+//    record=true
   }
 
   func testNotLoggedIn_IndividualMonthly() {
@@ -21,7 +21,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 
@@ -43,7 +43,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-    assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
 
     let subscription = Current.database.fetchSubscriptionByOwnerId(user.id)
@@ -52,7 +52,7 @@ final class SubscribeTests: TestCase {
       .right!!
 
     #if !os(Linux)
-    assertSnapshot(matching: subscription)
+    assertSnapshot(matching: subscription, as: .dump)
     #endif
   }
 
@@ -74,7 +74,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-    assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
 
     let subscription = Current.database.fetchSubscriptionByOwnerId(user.id)
@@ -90,7 +90,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 
@@ -100,7 +100,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 
@@ -112,7 +112,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 
@@ -123,7 +123,7 @@ final class SubscribeTests: TestCase {
   //      |> siteMiddleware
   //      |> Prelude.perform
   //
-  //    assertSnapshot(matching: conn)
+  //    assertSnapshot(matching: conn, as: .conn)
   //  }
 
   func testInvalidQuantity() {
@@ -140,7 +140,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn, named: "too_high")
+    assertSnapshot(matching: conn, as: .conn, named: "too_high")
     #endif
 
     let conn2 = connection(
@@ -150,7 +150,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn2, named: "too_low")
+    assertSnapshot(matching: conn2, as: .conn, named: "too_low")
     #endif
   }
 
@@ -170,7 +170,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
 
     let subscription = Current.database.fetchSubscriptionByOwnerId(user.id)
@@ -179,7 +179,7 @@ final class SubscribeTests: TestCase {
       .right!!
 
     #if !os(Linux)
-      assertSnapshot(matching: subscription)
+    assertSnapshot(matching: subscription, as: .dump)
     #endif
   }
 
@@ -198,7 +198,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 
@@ -217,7 +217,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 
@@ -236,7 +236,7 @@ final class SubscribeTests: TestCase {
       |> Prelude.perform
 
     #if !os(Linux)
-      assertSnapshot(matching: conn)
+    assertSnapshot(matching: conn, as: .conn)
     #endif
   }
 }

@@ -1,13 +1,22 @@
+#if os(macOS)
+import Cocoa
+#endif
 import Cryptor
 import Either
 import Foundation
+import Html
 import HttpPipeline
+import HttpPipelineTestSupport
 import Optics
 @testable import PointFree
 import Prelude
+import SnapshotTesting
+#if os(macOS)
+import WebKit
+#endif
 
 extension Environment {
-  public static let mock = Environment.init(
+  public static let mock = Environment(
     assets: .mock,
     blogPosts: unzurry([.mock]),
     cookieTransform: .plaintext,
@@ -19,13 +28,16 @@ extension Environment {
     gitHub: .mock,
     logger: .mock,
     mailgun: .mock,
-    stripe: .mock
+    renderHtml: Html.render,
+    stripe: .mock,
+    uuid: { .mock }
   )
 
   public static let teamYearly = mock
-    |> (\.database.fetchSubscriptionTeammatesByOwnerId) .~ const(pure([.mock]))
-    |> \.database.fetchTeamInvites .~ const(pure([.mock]))
-    |> \.stripe.fetchSubscription .~ const(pure(.teamYearly))
+    |> (\Environment.database.fetchSubscriptionTeammatesByOwnerId) .~ const(pure([Database.User.mock]))
+    |> (\Environment.database.fetchTeamInvites) .~ const(pure([Database.TeamInvite.mock]))
+    |> (\Environment.stripe.fetchSubscription) .~ const(pure(Stripe.Subscription.teamYearly))
+    |> (\Environment.stripe.fetchUpcomingInvoice) .~ const(pure(Stripe.Invoice.upcoming |> \.amountDue .~ 640_00))
 
   public static let individualMonthly = mock
     |> (\.database.fetchSubscriptionTeammatesByOwnerId) .~ const(pure([.mock]))
@@ -46,12 +58,13 @@ extension Assets {
 }
 
 extension Logger {
-  public static let mock = Logger(level: .debug, logger: { _ in })
+  public static let mock = Logger.init(level: .debug, output: .null, error: .null)
 }
 
 extension EnvVars {
   public static var mock: EnvVars {
     return EnvVars()
+      |> \.appEnv .~ EnvVars.AppEnv.testing
       |> \.postgres.databaseUrl .~ "postgres://pointfreeco:@localhost:5432/pointfreeco_test"
   }
 }
@@ -65,6 +78,7 @@ extension Mailgun {
 extension Database {
   public static let mock = Database(
     addUserIdToSubscriptionId: { _, _ in pure(unit) },
+    createFeedRequestEvent: { _, _, _ in pure(unit) },
     createSubscription: { _, _ in pure(unit) },
     deleteTeamInvite: const(pure(unit)),
     fetchAdmins: unzurry(pure([])),
@@ -73,12 +87,12 @@ extension Database {
     fetchFreeEpisodeUsers: { pure([.mock]) },
     fetchSubscriptionById: const(pure(.some(.mock))),
     fetchSubscriptionByOwnerId: const(pure(.some(.mock))),
-    fetchSubscriptionTeammatesByOwnerId: const(pure([])),
+    fetchSubscriptionTeammatesByOwnerId: const(pure([.mock])),
     fetchTeamInvite: const(pure(.mock)),
     fetchTeamInvites: const(pure([])),
     fetchUserByGitHub: const(pure(.mock)),
     fetchUserById: const(pure(.mock)),
-    fetchUsersSubscribedToNewsletter: const(pure([.mock])),
+    fetchUsersSubscribedToNewsletter: { _, _ in pure([.mock]) },
     fetchUsersToWelcome: const(pure([.mock])),
     incrementEpisodeCredits: const(pure([])),
     insertTeamInvite: { _, _ in pure(.mock) },
@@ -101,6 +115,7 @@ extension Database.User {
     id: .init(rawValue: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!),
     isAdmin: false,
     name: "Blob",
+    rssSalt: .init(rawValue: UUID(uuidString: "00000000-5A17-0000-0000-000000000000")!),
     subscriptionId: .init(rawValue: UUID(uuidString: "00000000-0000-0000-0000-000000000000")!)
   )
 
@@ -219,12 +234,14 @@ extension Stripe {
     cancelSubscription: const(pure(.canceling)),
     createCustomer: { _, _, _ in pure(.mock) },
     createSubscription: { _, _, _, _ in pure(.mock) },
+    fetchCoupon: const(pure(.mock)),
     fetchCustomer: const(pure(.mock)),
     fetchInvoice: const(pure(.mock(charge: .right(.mock)))),
     fetchInvoices: const(pure(.mock([.mock(charge: .right(.mock))]))),
-    fetchPlans: pure(.mock([.mock])),
+    fetchPlans: { pure(.mock([.mock])) },
     fetchPlan: const(pure(.mock)),
     fetchSubscription: const(pure(.mock)),
+    fetchUpcomingInvoice: const(pure(.upcoming)),
     invoiceCustomer: const(pure(.mock(charge: .right(.mock)))),
     updateCustomer: { _, _ in pure(.mock) },
     updateCustomerExtraInvoiceInfo: { _, _ in pure(.mock) },
@@ -304,6 +321,11 @@ extension Stripe.Invoice {
       total: 17_00
     )
   }
+
+  public static let upcoming = mock(charge: .right(.mock))
+    |> \.amountDue .~ 17_00
+    |> \.amountPaid .~ 0
+    |> \.id .~ nil
 }
 
 extension Stripe.LineItem {
@@ -343,14 +365,15 @@ extension Stripe.Plan {
   public static let individualYearly = mock
     |> \.amount .~ 170_00
     |> \.id .~ .individualYearly
+    |> \.interval .~ .year
     |> \.name .~ "Individual Yearly"
 
-  public static let teamMonthly = mock
+  public static let teamMonthly = individualMonthly
     |> \.amount .~ 16_00
     |> \.id .~ .teamMonthly
     |> \.name .~ "Team Monthly"
 
-  public static let teamYearly = mock
+  public static let teamYearly = individualYearly
     |> \.amount .~ 160_00
     |> \.id .~ .teamYearly
     |> \.name .~ "Team Yearly"
@@ -398,18 +421,23 @@ extension Stripe.Subscription {
     |> \.currentPeriodEnd .~ Date(timeInterval: -60 * 60 * 24 * 30, since: .mock)
     |> \.currentPeriodStart .~ Date(timeInterval: -60 * 60 * 24 * 60, since: .mock)
     |> \.status .~ .canceled
+
+  public static let discounted = mock
+    |> \.plan .~ .individualYearly
+    |> \.quantity .~ 1
+    |> \.discount .~ .mock
 }
 
-extension Stripe.Subscription.Discount {
-  public static let mock = Stripe.Subscription.Discount(coupon: .mock)
+extension Stripe.Discount {
+  public static let mock = Stripe.Discount(coupon: .mock)
 }
 
-extension Stripe.Subscription.Discount.Coupon {
-  public static let mock = Stripe.Subscription.Discount.Coupon(
-    amountOff: nil,
+extension Stripe.Coupon {
+  public static let mock = Stripe.Coupon(
+    duration: .forever,
     id: "coupon-deadbeef",
     name: "Student Discount",
-    percentOff: 50,
+    rate: .percentOff(50),
     valid: true
   )
 }
@@ -454,6 +482,131 @@ extension Session {
   public static let loggedIn = loggedOut
     |> \.userId .~ Database.User.mock.id
 }
+
+extension UUID {
+  public static let mock = UUID(uuidString: "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF")!
+}
+
+extension Snapshotting {
+  public static var ioConn: Snapshotting<IO<Conn<ResponseEnded, Data>>, String> {
+    return Snapshotting<Conn<ResponseEnded, Data>, String>.conn.pullback { io in
+      let renderHtml = Current.renderHtml
+      update(&Current, \.renderHtml .~ { debugRender($0) })
+      let conn = io.perform()
+      update(&Current, \.renderHtml .~ renderHtml)
+      return conn
+    }
+  }
+
+  #if os(macOS)
+  @available(OSX 10.13, *)
+  public static func ioConnWebView(size: CGSize) -> Snapshotting<IO<Conn<ResponseEnded, Data>>, NSImage> {
+    return Snapshotting<NSView, NSImage>.image.pullback { io in
+      let webView = WKWebView(frame: .init(origin: .zero, size: size))
+      webView.loadHTMLString(String(decoding: io.perform().data, as: UTF8.self), baseURL: nil)
+      return webView
+    }
+  }
+  #endif
+}
+
+#if os(Linux)
+extension SnapshotTestCase {
+  public func assertSnapshots<A, B>(
+    matching value: A,
+    as strategies: [String: Snapshotting<A, B>],
+    record recording: Bool = false,
+    timeout: TimeInterval = 5,
+    file: StaticString = #file,
+    testName: String = #function,
+    line: UInt = #line
+    ) {
+
+    strategies.forEach { name, strategy in
+      assertSnapshot(
+        matching: value,
+        as: strategy,
+        named: name,
+        record: recording,
+        timeout: timeout,
+        file: file,
+        testName: testName,
+        line: line
+      )
+    }
+  }
+
+  public func assertSnapshots<A, B>(
+    matching value: A,
+    as strategies: [Snapshotting<A, B>],
+    record recording: Bool = false,
+    timeout: TimeInterval = 5,
+    file: StaticString = #file,
+    testName: String = #function,
+    line: UInt = #line
+    ) {
+
+    strategies.forEach { strategy in
+      assertSnapshot(
+        matching: value,
+        as: strategy,
+        record: recording,
+        timeout: timeout,
+        file: file,
+        testName: testName,
+        line: line
+      )
+    }
+  }
+}
+#else
+public func assertSnapshots<A, B>(
+  matching value: A,
+  as strategies: [String: Snapshotting<A, B>],
+  record recording: Bool = false,
+  timeout: TimeInterval = 5,
+  file: StaticString = #file,
+  testName: String = #function,
+  line: UInt = #line
+  ) {
+
+  strategies.forEach { name, strategy in
+    assertSnapshot(
+      matching: value,
+      as: strategy,
+      named: name,
+      record: recording,
+      timeout: timeout,
+      file: file,
+      testName: testName,
+      line: line
+    )
+  }
+}
+
+public func assertSnapshots<A, B>(
+  matching value: A,
+  as strategies: [Snapshotting<A, B>],
+  record recording: Bool = false,
+  timeout: TimeInterval = 5,
+  file: StaticString = #file,
+  testName: String = #function,
+  line: UInt = #line
+  ) {
+
+  strategies.forEach { strategy in
+    assertSnapshot(
+      matching: value,
+      as: strategy,
+      record: recording,
+      timeout: timeout,
+      file: file,
+      testName: testName,
+      line: line
+    )
+  }
+}
+#endif
 
 public func request(
   with baseRequest: URLRequest,
